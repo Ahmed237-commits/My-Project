@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>English Academy</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #EFE7DC;
+      color: #333;
+    }
+
+    section {
+      padding: 80px 20px;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 32px;
+      color: #5A4A42;
+      margin-bottom: 20px;
+    }
+
+    p.description {
+      font-size: 18px;
+      max-width: 600px;
+      margin: 0 auto 50px;
+      color: #555;
+    }
+
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 30px;
+    }
+
+    .feature-box {
+      background-color: white;
+      border-radius: 12px;
+      padding: 25px;
+      width: 280px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .feature-box h3 {
+      color: #5A4A42;
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+
+    .feature-box p {
+      color: #666;
+      font-size: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .features {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  
+    footer {
+      background-color: #e3dbcf;
+      color: #5A4A42;
+      padding: 50px 30px 20px;
+    }
+
+    .footer-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .footer-column {
+      flex: 1 1 200px;
+      margin: 20px;
+    }
+
+    .footer-column h4 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #5A4A42;
+    }
+
+    .footer-column ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .footer-column ul li {
+      margin-bottom: 10px;
+    }
+
+    .footer-column ul li a {
+      color: #5A4A42;
+      text-decoration: none;
+      font-size: 15px;
+      transition: color 0.3s ease;
+    }
+
+    .footer-column ul li a:hover {
+      color: #000;
+    }
+
+    .newsletter input[type="email"] {
+      padding: 10px;
+      width: 80%;
+      max-width: 250px;
+      border: none;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+
+    .newsletter button {
+      padding: 10px 16px;
+      background-color: #5A4A42;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 14px;
+      color: #888;
+    }
+
+    .social-icons a {
+      display: inline-block;
+      margin-right: 10px;
+    }
+
+    .social-icons img {
+      width: 24px;
+      height: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .footer-container {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .footer-column {
+        margin: 20px 0;
+      }
+    }
+   .hero {
+      background-color: #EFE7DC;
+      padding: 60px 30px;
+      text-align: center;
+      position: relative;
+    }
+
+    .logo {
+      max-width: 120px;
+      margin-bottom: 20px;
+    }
+
+    .signin-btn {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      background-color: transparent;
+      color: #5A4A42;
+      border: 2px solid #5A4A42;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      text-decoration: none;
+      transition: background-color 0.3s ease;
+    }
+
+    .signin-btn:hover {
+      background-color: #5A4A42;
+      color: white;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      margin-bottom: 15px;
+      color: #5A4A42;
+    }
+
+    .hero p {
+      font-size: 18px;
+      max-width: 500px;
+      margin: 0 auto 30px;
+      color: #555;
+    }
+
+    .hero button {
+      background-color: #f59e0b;
+      color: white;
+      font-size: 18px;
+      padding: 14px 30px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    .hero button:hover {
+      background-color: #d97706;
+    }
+
+    @media (max-width: 600px) {
+      .hero h1 {
+        font-size: 28px;
+      }
+
+      .hero button {
+        width: 80%;
+      }
+
+      .signin-btn {
+        top: 15px;
+        right: 20px;
+        padding: 6px 12px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+   <section class="hero">
+    <a href="/signin" class="signin-btn">Sign In</a>
+
+    <img src="logo.png" alt="Academy Logo" class="logo" />
+
+    <h1>Welcome To Our Academy</h1>
+    <p>Learn English like never before. Practical lessons, clear guidance, and a teacher who truly cares.</p>
+    
+    <button>Search</button>
+  </section>
+  <section>
+    <h2>Why Join Our Academy?</h2>
+    <p class="description">
+      Our program is designed to help you speak, write, and understand English like a professional — with confidence and clarity.
+    </p>
+
+    <div class="features">
+      <div class="feature-box">
+        <h3>✔️ Conversation Skills</h3>
+        <p>Improve fluency and speak with confidence in real-life situations.</p>
+      </div>
+      <div class="feature-box">
+        <h3>✔️ Vocabulary Expansion</h3>
+        <p>Learn the words you need to express yourself like a pro.</p>
+      </div>
+      <div class="feature-box">
+        <h3>✔️ Grammar & Structure</h3>
+        <p>Understand how English works so you can use it naturally.</p>
+      </div>
+    </div>
+  </section>
+<!-- Footer Section -->
+ <footer>
+    <div class="footer-container">
+      <div class="footer-column">
+        <h4>Quik Look</h4>
+        <p>We help students master English with personalized lessons, real-world practice, and a teacher who cares about results.</p>
+      </div>
+
+      <div class="footer-column">
+        <h4>Useful Links</h4>
+        <ul>
+          <li><a href="#">Home</a></li>
+          <li><a href="#">Lessons</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">FAQs</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-column">
+        <h4>Follow Us</h4>
+        <div class="social-icons">
+          <a href="#"><img src="facebook-icon.png" alt="Facebook" /></a>
+          <a href="#"><img src="youtube-icon.png" alt="YouTube" /></a>
+          <a href="#"><img src="instagram-icon.png" alt="Instagram" /></a>
+          <a href="#"><img src="whatsapp-icon.png" alt="WhatsApp" /></a>
+        </div>
+      </div>
+
+      <div class="footer-column newsletter">
+        <h4>Subscribe</h4>
+        <form>
+          <input type="email" placeholder="Your email address" required />
+          <br />
+          <button type="submit">Subscribe</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      &copy; 2025 English Mastery Zone. All rights reserved.
+    </div>
+  </footer>
+</body>
+</html>

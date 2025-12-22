@@ -1,0 +1,229 @@
+:root {
+  --bg-color: #121212;
+  --board-bg: #1e1e1e;
+  --cell-bg: #2a2a2a;
+  --cell-hover: #3a3a3a;
+  --text-color: #e0e0e0;
+  --neon-blue: #00d4ff;
+  --neon-red: #ff3b30;
+  --neon-green: #39ff14;
+  --glow-blue: 0 0 10px #00d4ff, 0 0 20px #00d4ff;
+  --glow-red: 0 0 10px #ff3b30, 0 0 20px #ff3b30;
+  --glow-green: 0 0 10px #39ff14, 0 0 20px #39ff14;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Cairo', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+.container {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.game-title {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.highlight {
+  color: var(--neon-blue);
+  text-shadow: var(--glow-blue);
+}
+
+.turn-indicator {
+  font-size: 1.5rem;
+  margin-bottom: 30px;
+  background: var(--board-bg);
+  padding: 10px 20px;
+  border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  display: inline-block;
+}
+
+.player-x {
+  color: var(--neon-red);
+  font-weight: bold;
+}
+
+.player-o {
+  color: var(--neon-blue);
+  font-weight: bold;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 110px);
+  grid-template-rows: repeat(3, 110px);
+  gap: 15px;
+  background-color: var(--board-bg);
+  padding: 15px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.cell {
+  width: 110px;
+  height: 110px;
+  background-color: var(--cell-bg);
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.cell:hover {
+  background-color: var(--cell-hover);
+  transform: scale(1.02);
+}
+
+.cell.taken {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* X Style */
+.x {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.x::before,
+.x::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 100%;
+  background-color: var(--neon-red);
+  top: 0;
+  left: 50%;
+  border-radius: 4px;
+  box-shadow: var(--glow-red);
+  animation: growIn 0.3s ease forwards;
+}
+
+.x::before {
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.x::after {
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+/* O Style */
+.o {
+  width: 60px;
+  height: 60px;
+  border: 8px solid var(--neon-blue);
+  border-radius: 50%;
+  box-shadow: var(--glow-blue);
+  background: transparent;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.footer {
+  margin-top: 40px;
+}
+
+.btn {
+  padding: 12px 30px;
+  background-color: var(--neon-green);
+  border: none;
+  border-radius: 50px;
+  color: #000;
+  font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: var(--glow-green);
+  transition: all 0.3s ease;
+  font-family: 'Cairo', sans-serif;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--neon-green);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+/* Winning Animation */
+.winning-cell {
+  background-color: rgba(57, 255, 20, 0.1) !important;
+  box-shadow: inset 0 0 20px rgba(57, 255, 20, 0.2);
+}
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 10;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.modal.show {
+  display: flex !important;
+  opacity: 1;
+}
+
+.modal-content {
+  background-color: var(--board-bg);
+  padding: 40px;
+  border-radius: 20px;
+  text-align: center;
+  border: 2px solid var(--neon-blue);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+  transform: scale(0.8);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal.show .modal-content {
+  transform: scale(1);
+}
+
+#result-message {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: var(--text-color);
+}
+
+@keyframes growIn {
+  from { height: 0; opacity: 0; }
+  to { height: 100%; opacity: 1; }
+}
+
+@keyframes popIn {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

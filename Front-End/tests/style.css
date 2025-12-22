@@ -1,0 +1,7 @@
+*{
+    box-sizing: border-box;
+}
+div {
+    transition: transform 1s ease-in-out 2s;
+transform: scale(1);
+}
