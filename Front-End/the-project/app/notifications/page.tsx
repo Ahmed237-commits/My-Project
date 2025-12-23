@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useBMI } from '../context/Bmicontext';
+import { useBMI } from '../context/BMIContext';
 import Link from 'next/link';
 
 // Array to store all notifications
