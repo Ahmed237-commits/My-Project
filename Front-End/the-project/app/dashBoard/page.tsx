@@ -23,6 +23,7 @@ import Image from "next/image";
 import { FaCalculator, FaSun, FaMoon, FaBell, FaSearch, FaTachometerAlt, FaFireAlt, FaDumbbell, FaClipboardCheck, FaUtensils, FaBed, FaWalking } from "react-icons/fa";
 import { usePathname, useRouter } from "next/navigation";
 import sal from "sal.js";
+import { UserAvatar } from "../(componants)/Header";
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -161,7 +162,7 @@ export default function DashBoard() {
     { path: "/bmi", name: "BMI", icon: <FaClipboardCheck /> },
     { path: "/sleepcalculator", name: "Sleep Calculator", icon: <FaBed /> },
     { path: "/stepscalculator", name: "Steps Calculator", icon: <FaWalking /> },
-      { path: "/caloriescalculator", name: "Calories Calculator", icon: <FaWalking /> },
+    { path: "/caloriescalculator", name: "Calories Calculator", icon: <FaWalking /> },
 
   ];
   const theSpan = useRef<HTMLSpanElement | null>(null);
@@ -276,14 +277,18 @@ export default function DashBoard() {
                     </Link>
                   </button>
 
-                  <Link href="/Profile">
-                    <Image
-                      src={data?.user?.image || ""}
-                      alt="User"
-                      width={40}
-                      height={40}
-                      className="rounded-full ring-2 ring-blue-500"
-                    />
+                  <Link href="/Profile" className="flex items-center">
+                    {data?.user?.image ? (
+                      <Image
+                        src={data.user.image}
+                        alt="User"
+                        width={40}
+                        height={40}
+                        className="rounded-full ring-2 ring-blue-500"
+                      />
+                    ) : (
+                      <UserAvatar user={data?.user} />
+                    )}
                   </Link>
                 </div>
               </header>

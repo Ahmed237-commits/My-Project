@@ -130,3 +130,9 @@
     @apply bg-background text-foreground;
   }
 } */
+/* في ملف globals.css أو في style داخل Header */
+/* أضف هذا في globals.css */
+
+
+/* إضافة هذه القاعدة في meta tag في layout.tsx */
+/* في head section: */

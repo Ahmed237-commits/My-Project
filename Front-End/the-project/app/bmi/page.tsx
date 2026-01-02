@@ -36,11 +36,11 @@ export default function HealthyLifeBMIPage() {
   };
 
   const accentColor =
-    bmi && bmi < 18.5
+    bmi > 0 && bmi < 18.5
       ? 'text-yellow-600'
-      : bmi && bmi < 24.9
+      : bmi > 0 && bmi < 24.9
         ? 'text-emerald-600'
-        : bmi && bmi < 29.9
+        : bmi > 0 && bmi < 29.9
           ? 'text-orange-500'
           : 'text-red-600';
 
@@ -98,7 +98,7 @@ export default function HealthyLifeBMIPage() {
                 onClick={() => {
                   setWeight('');
                   setHeight('');
-                  setBmi(null);
+                  setBmi(0);
                 }}
                 className={`inline-flex items-center gap-2 border py-3 px-5 rounded-full font-medium shadow-sm ${theme === 'dark' ? 'border-gray-500 text-gray-300 hover:bg-gray-700' : 'border-[#5A4A42] text-[#5A4A42] bg-white/60 hover:bg-white'}`}
               >
@@ -166,7 +166,7 @@ export default function HealthyLifeBMIPage() {
                   </button>
                 </div>
 
-                {bmi !== null && (
+                {bmi > 0 && (
                   <div className={`mt-6 p-4 rounded-2xl border shadow-inner ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-[#f8f6f3] border-[#efe6dd]'}`}>
                     <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#5A4A42]'}`}>Hello {sessionData?.user?.name || 'Friend'}</h3>
                     <div className="mt-2 flex items-end gap-4">
@@ -186,7 +186,7 @@ export default function HealthyLifeBMIPage() {
               <div className={`rounded-2xl p-6 w-full max-w-xs shadow-md border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-[#fffaf7] border-[#efe6dd]'}`} data-sal="zoom-in" data-sal-duration="600">
                 <h4 className={`text-center font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#5A4A42]'}`}>BMI Visual</h4>
                 <RadialBarChart width={260} height={260} innerRadius="70%" outerRadius="100%" data={data} startAngle={180} endAngle={0}>
-                  <RadialBar background dataKey="uv" cornerRadius={12} fill={bmi && bmi < 18.5 ? '#facc15' : bmi && bmi < 24.9 ? '#22c55e' : bmi && bmi < 29.9 ? '#fb923c' : '#ef4444'} />
+                  <RadialBar background dataKey="uv" cornerRadius={12} fill={bmi > 0 && bmi < 18.5 ? '#facc15' : bmi > 0 && bmi < 24.9 ? '#22c55e' : bmi > 0 && bmi < 29.9 ? '#fb923c' : '#ef4444'} />
                   <Legend iconSize={8} layout="vertical" verticalAlign="middle" align="right" />
                   <Tooltip />
                 </RadialBarChart>

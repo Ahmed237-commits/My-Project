@@ -182,7 +182,7 @@ export default function CaloriesUploader() {
         <h1 className={`text-4xl text-center mb-2 ${theme === 'dark' ? 'text-white' : 'text-[#5A4A42]'}`}>Calories Calculator</h1>
         <p className={`text-center mb-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Track your nutrition with AI or manual entry</p>
         {/* Tabs */}
-        <div className={`flex justify-center mb-8 p-1 rounded-full shadow-sm border w-fit mx-auto ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`flex justify-center mb-8 p-1 rounded-full shadow-sm border w-full max-w-full overflow-x-auto mx-auto ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           {[
             { id: 'manual', label: 'Manual Search', icon: <FaSearch /> },
             { id: 'create', label: 'Add New Food', icon: <FaPlus /> },
