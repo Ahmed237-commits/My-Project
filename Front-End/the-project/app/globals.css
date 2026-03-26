@@ -1,17 +1,17 @@
 @import "tailwindcss";
+@import 'sal.js/dist/sal.css';  /* احتفظ بهذا فقط */
+
+/* باقي الكود كما هو */
 /* @custom-variant dark (&:is(.dark *)); */
 
- /* inline {
+/* inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono); */
 
-  @import url('https://fonts.googleapis.com/css2?family=Jomhuria&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
-  @import 'sal.js/dist/sal.css';
- body {
+body {
   font-family: var(--font-jomhuria), sans-serif;
-  font-family: var(--), sans-serif;
 }
 
 
@@ -130,9 +130,3 @@
     @apply bg-background text-foreground;
   }
 } */
-/* في ملف globals.css أو في style داخل Header */
-/* أضف هذا في globals.css */
-
-
-/* إضافة هذه القاعدة في meta tag في layout.tsx */
-/* في head section: */
