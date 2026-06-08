@@ -65,15 +65,15 @@ export default function ChatBot() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-6 right-6 flex flex-col items-end">
       {/* Chat window */}
       <div
         className={`transition-all duration-300 ease-in-out transform origin-bottom-right ${
           open ? "scale-100 opacity-100 translate-y-0" : "scale-0 opacity-0 translate-y-10 pointer-events-none"
-        } w-[350px] h-[500px] bg-white/90 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4`}
+        }  bg-white/90 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4`}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#5A4A42] to-[#8B735B] text-white p-4 flex justify-between items-center shadow-md">
+        <div className="bg-linear-to-r from-[#5A4A42] to-[#8B735B] text-white p-4 flex justify-between items-center shadow-md">
           <div className="flex items-center gap-3">
             <div className="bg-white/20 p-2 rounded-full">
               <FaRobot className="text-xl" />
@@ -105,7 +105,7 @@ export default function ChatBot() {
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-2 ${msg.from === "user" ? "flex-row-reverse" : "flex-row"}`}>
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                   msg.from === "user" ? "bg-[#5A4A42] text-white" : "bg-gray-200 text-gray-600"
                 }`}
               >
@@ -129,7 +129,7 @@ export default function ChatBot() {
 
           {loading && (
             <div className="flex gap-2">
-              <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center shrink-0">
                 <FaRobot size={14} />
               </div>
               <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none shadow-sm">
