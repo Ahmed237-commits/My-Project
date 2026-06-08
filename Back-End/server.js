@@ -7,239 +7,294 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
-// Try to use native fetch (Node 18+), otherwise require node-fetch
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
-// Initialize App
 const app = express();
 dotenv.config();
 
 // ==== CONFIGURATION ====
-const GEMINI_API_KEY = "AIzaSyCwvH5HmOBUcD1yuhQljdgrQPVzrLT7u_8"; // ⚠️ SECURITY WARNING: Don't share this publicly
-const PORT = process.env.PORT || 3000;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // ✅ Load from .env — never hardcode API keys
+const PORT = process.env.PORT || 8000;
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
-app.use('/images', express.static(path.join(__dirname, 'images')));
+app.use('/images',  express.static(path.join(__dirname, 'images')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Ensure uploads directory exists
+app.use(cors());
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
-// ==== MONGODB CONNECTION ====
+// ==== MONGODB ====
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch((err) => console.log('❌ DB Error:', err));
 
 // ==== SCHEMAS ====
 const DailyIntakeSchema = new mongoose.Schema({
-  email: { type: String, required: true },
-  date: { type: String, required: true },
-  foodName: String,
-  calories: Number,
-  protein: Number,
-  timestamp: { type: Date, default: Date.now }
+  email:     { type: String, required: true },
+  date:      { type: String, required: true },
+  foodName:  String,
+  calories:  Number,
+  protein:   Number,
+  timestamp: { type: Date, default: Date.now },
 });
 const DailyIntake = mongoose.model('DailyIntake', DailyIntakeSchema);
 
 const FoodItemSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
-  calories: { type: Number, required: true },
-  protein: { type: Number, required: true },
-  createdBy: { type: String, default: 'system' }
+  name:      { type: String, required: true, unique: true },
+  calories:  { type: Number, required: true },
+  protein:   { type: Number, required: true },
+  createdBy: { type: String, default: 'system' },
 });
 const FoodItem = mongoose.model('FoodItem', FoodItemSchema);
 
 const BmiSchema = new mongoose.Schema({
-  email: { type: String, required: true },
-  height: { type: Number, required: true },
-  weight: { type: Number, required: true },
-  bmi: { type: Number, required: true },
-  timestamp: { type: Date, default: Date.now }
+  email:     { type: String, required: true },
+  height:    { type: Number, required: true },
+  weight:    { type: Number, required: true },
+  bmi:       { type: Number, required: true },
+  timestamp: { type: Date, default: Date.now },
 });
 const Bmi = mongoose.model('Bmi', BmiSchema);
 
-const workoutSchema = new mongoose.Schema({
-  email: { type: String, required: true },
-  workout: { type: String, required: true },
-  timestamp: { type: Date, default: Date.now }
+const WorkoutSchema = new mongoose.Schema({
+  email:     { type: String, required: true },
+  workout:   { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
 });
-const Workout = mongoose.model('Workout', workoutSchema);
+const Workout = mongoose.model('Workout', WorkoutSchema);
 
 const CaloriesSchema = new mongoose.Schema({
-  email: { type: String, required: true },
-  calories: { type: Number, required: true },
-  timestamp: { type: Date, default: Date.now }
+  email:     { type: String, required: true },
+  calories:  { type: Number, required: true },
+  timestamp: { type: Date, default: Date.now },
 });
 const Calories = mongoose.model('Calories', CaloriesSchema);
 
 const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  salt: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
+  name: {
+    type: String,
+    required: true
+  },
+
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+
+  password: {
+    type: String,
+    required: false
+  },
+
+  salt: {
+    type: String,
+    required: false
+  },
+
+  provider: {
+    type: String,
+    default: "credentials"
+  },
+
+  image: {
+    type: String
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+
+  bio: {
+    type: String
+  }
 });
 const User = mongoose.model('User', UserSchema);
 
-// ==== HELPER DATA & FUNCTIONS ====
+const NotificationSchema = new mongoose.Schema({
+  email:     { type: String, required: false },
+  message:   { type: String, required: true },
+  read:      { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+});
+const Notification = mongoose.model('Notification', NotificationSchema);
+
+
+const LoginLogSchema = new mongoose.Schema({
+  userId: String,
+  email: String,
+  provider: String,
+  status: String,
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+bio : {type:String , required : false}
+});
+
+const LoginLog = mongoose.model("LoginLog", LoginLogSchema);
+// ==== HELPERS ====
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
 }
 
 const foodDatabase = {
-  "apple": { calories: 52, protein: 0.3 },
-  "banana": { calories: 89, protein: 1.1 },
-  "chicken breast": { calories: 165, protein: 31 },
-  "rice": { calories: 130, protein: 2.7 },
-  "egg": { calories: 155, protein: 13 },
-  "milk": { calories: 42, protein: 3.4 },
-  "bread": { calories: 265, protein: 9 },
-  "potato": { calories: 77, protein: 2 },
-  "beef": { calories: 250, protein: 26 },
-  "fish": { calories: 206, protein: 22 },
-  "salad": { calories: 33, protein: 1.4 },
-  "pizza": { calories: 266, protein: 11 },
-  "burger": { calories: 295, protein: 17 },
-  "pasta": { calories: 131, protein: 5 }
+  'apple':          { calories: 52,  protein: 0.3 },
+  'banana':         { calories: 89,  protein: 1.1 },
+  'chicken breast': { calories: 165, protein: 31  },
+  'rice':           { calories: 130, protein: 2.7 },
+  'egg':            { calories: 155, protein: 13  },
+  'milk':           { calories: 42,  protein: 3.4 },
+  'bread':          { calories: 265, protein: 9   },
+  'potato':         { calories: 77,  protein: 2   },
+  'beef':           { calories: 250, protein: 26  },
+  'fish':           { calories: 206, protein: 22  },
+  'salad':          { calories: 33,  protein: 1.4 },
+  'pizza':          { calories: 266, protein: 11  },
+  'burger':         { calories: 295, protein: 17  },
+  'pasta':          { calories: 131, protein: 5   },
 };
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+  filename:    (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // ==========================================
-//              ROUTES
+//                  ROUTES
 // ==========================================
 
-// 1. GEMINI CHATBOT ROUTE (Updated)
-app.post("/chat", async (req, res) => {
-  const { message } = req.body;
-  console.log("💬 Incoming user message:", message);
+// ==== NOTIFICATIONS ====
 
+// GET /api/notifications — fetch notifications (filter by email if provided)
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const filter = req.query.email ? { email: req.query.email } : {};
+    const notifications = await Notification.find(filter).sort({ createdAt: -1 });
+    res.status(200).json(notifications);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// PUT /api/notifications/mark-read — mark all unread as read
+app.put('/api/notifications/mark-read', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  try {
+    await Notification.updateMany({ email, read: false }, { $set: { read: true } });
+    res.status(200).json({ success: true, message: 'All notifications marked as read' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update notifications' });
+  }
+});
+
+// ==== GEMINI CHATBOT ====
+app.post('/chat', async (req, res) => {
+  const { message } = req.body;
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: message }] }]
-        }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] }),
       }
     );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Gemini API Error details:", errorText);
-      throw new Error(`API responded with status ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
     const data = await response.json();
-    const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response text found.";
-
-    console.log("🤖 Gemini replied:", botReply);
-    return res.status(200).json({ reply: botReply });
-
+    const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No response received.';
+    res.status(200).json({ reply: botReply });
   } catch (err) {
-    console.log("❌ Error:", err);
-    return res.status(500).json({ reply: "Error communicating with AI" });
+    console.error('Gemini error:', err);
+    res.status(500).json({ reply: 'Error communicating with AI.' });
   }
 });
 
-// 2. IMAGE UPLOAD & AUTOMATION
-app.post("/caloriescalculator", upload.single("image"), async (req, res) => {
+// ==== IMAGE UPLOAD & CALORIES CALCULATION ====
+app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
   try {
     const image = req.file;
-    if (!image) return res.status(400).json({ error: "Image is required" });
+    if (!image) return res.status(400).json({ error: 'Image is required' });
 
-    // Read and Process Image
-    const fileData = fs.readFileSync(image.path);
-    const base64Image = fileData.toString("base64");
+    const base64Image = fs.readFileSync(image.path).toString('base64');
 
-    await sharp(req.file.path)
+    await sharp(image.path)
       .resize({ width: 720 })
       .jpeg({ quality: 80 })
-      .toFile('uploads/resized-' + req.file.filename);
+      .toFile(`uploads/resized-${image.filename}`);
 
-    // Delete original
     fs.unlinkSync(image.path);
-    console.log("🗑️ Deleted image from server:", image.path);
 
-    // Send to ActivePieces Webhook
-    const webhookURL = "https://cloud.activepieces.com/api/v1/webhooks/SfbNicrtC0umtVrHAuxdP";
+    const webhookURL = 'https://cloud.activepieces.com/api/v1/webhooks/SfbNicrtC0umtVrHAuxdP';
     const response = await fetch(webhookURL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: req.body.name,
-        email: req.body.email,
+        name:        req.body.name,
+        email:       req.body.email,
         imageBase64: base64Image,
-        mimeType: image.mimetype,
+        mimeType:    image.mimetype,
       }),
     });
 
-    const text = await response.text();
-    console.log("📡 Automation Response:", text);
+    if (!response.ok) return res.status(500).json({ error: 'Automation failed' });
 
-    if (!response.ok) return res.status(500).json({ error: "Automation failed" });
+    if (req.body.email) {
+      await Notification.create({
+        email:   req.body.email,
+        message: 'Your meal photo was analysed and sent for calorie calculation successfully! 📸',
+      });
+    }
 
-    res.status(200).json({
-      message: "Image sent to automation successfully!",
-      automationResponse: text
-    });
-
+    res.status(200).json({ message: 'Image sent to automation successfully!', automationResponse: await response.text() });
   } catch (err) {
-    console.error("❌ Error:", err);
-    res.status(500).json({ error: "Image processing failed" });
+    console.error('Image processing error:', err);
+    res.status(500).json({ error: 'Image processing failed' });
   }
 });
 
-// 3. FOOD DATABASE ROUTES
-app.post("/api/food/create", async (req, res) => {
+// ==== FOOD DATABASE ====
+app.post('/api/food/create', async (req, res) => {
   const { name, calories, protein, email } = req.body;
   if (!name || calories === undefined || protein === undefined) {
-    return res.status(400).json({ error: "Name, calories, and protein are required" });
+    return res.status(400).json({ error: 'Name, calories, and protein are required' });
   }
-
   try {
     const existing = await FoodItem.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
-    if (existing) return res.status(400).json({ error: "Food already exists" });
+    if (existing) return res.status(400).json({ error: 'Food item already exists' });
 
-    const newFood = new FoodItem({ name, calories, protein, createdBy: email || 'system' });
-    await newFood.save();
-    res.json({ message: "Food created successfully", food: newFood });
+    const newFood = await FoodItem.create({ name, calories, protein, createdBy: email ?? 'system' });
+    res.json({ message: 'Food item created successfully', food: newFood });
   } catch (err) {
-    console.error("Error creating food:", err);
-    res.status(500).json({ error: "Failed to create food" });
+    console.error('Food create error:', err);
+    res.status(500).json({ error: 'Failed to create food item' });
   }
 });
 
-app.post("/api/food/calculate", async (req, res) => {
+app.post('/api/food/calculate', async (req, res) => {
   const { foodName, weight } = req.body;
-  if (!foodName) return res.status(400).json({ error: "Food name is required" });
+  if (!foodName) return res.status(400).json({ error: 'Food name is required' });
 
-  const lowerName = foodName.toLowerCase().trim();
-  const multiplier = weight ? (parseFloat(weight) / 100) : 1;
+  const lowerName  = foodName.toLowerCase().trim();
+  const multiplier = weight ? parseFloat(weight) / 100 : 1;
 
   try {
     const dbFood = await FoodItem.findOne({ name: { $regex: new RegExp(lowerName, 'i') } });
-
     if (dbFood) {
       return res.json({
         foodName: dbFood.name,
         calories: Math.round(dbFood.calories * multiplier),
-        protein: Math.round(dbFood.protein * multiplier),
-        per100g: { calories: dbFood.calories, protein: dbFood.protein },
-        weight: weight || 100,
-        found: true,
-        source: 'database'
+        protein:  Math.round(dbFood.protein  * multiplier),
+        per100g:  { calories: dbFood.calories, protein: dbFood.protein },
+        weight:   weight ?? 100,
+        found:    true,
+        source:   'database',
       });
     }
 
@@ -249,118 +304,123 @@ app.post("/api/food/calculate", async (req, res) => {
       return res.json({
         foodName: match,
         calories: Math.round(data.calories * multiplier),
-        protein: Math.round(data.protein * multiplier),
-        per100g: { calories: data.calories, protein: data.protein },
-        weight: weight || 100,
-        found: true,
-        source: 'mock'
-      });
-    } else {
-      return res.json({
-        foodName: foodName,
-        calories: Math.round(100 * multiplier),
-        protein: Math.round(5 * multiplier),
-        weight: weight || 100,
-        found: false,
-        message: "Food not found, using default estimation."
+        protein:  Math.round(data.protein  * multiplier),
+        per100g:  { calories: data.calories, protein: data.protein },
+        weight:   weight ?? 100,
+        found:    true,
+        source:   'mock',
       });
     }
+
+    return res.json({
+      foodName, weight: weight ?? 100, found: false,
+      calories: Math.round(100 * multiplier),
+      protein:  Math.round(5   * multiplier),
+      message:  'Food not found — using default estimation.',
+    });
   } catch (err) {
-    console.error("Error calculating food:", err);
-    res.status(500).json({ error: "Search failed" });
+    console.error('Food calculate error:', err);
+    res.status(500).json({ error: 'Calculation failed' });
   }
 });
 
-// 4. DAILY INTAKE ROUTES
-app.post("/api/daily-intake/add", async (req, res) => {
+// ==== DAILY INTAKE ====
+app.post('/api/daily-intake/add', async (req, res) => {
   const { email, foodName, calories, protein } = req.body;
   if (!email || !foodName || calories === undefined) {
-    return res.status(400).json({ error: "Missing required fields" });
+    return res.status(400).json({ error: 'Missing required fields' });
   }
-
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const newEntry = new DailyIntake({ email, date: today, foodName, calories, protein: protein || 0 });
-    await newEntry.save();
-    res.json({ message: "Added to daily intake", entry: newEntry });
-  } catch (err) {
-    console.error("Error saving intake:", err);
-    res.status(500).json({ error: "Failed to save data" });
-  }
-});
+    const today    = new Date().toISOString().split('T')[0];
+    const newEntry = await DailyIntake.create({ email, date: today, foodName, calories, protein: protein ?? 0 });
 
-app.get("/api/daily-intake/today", async (req, res) => {
-  const { email } = req.query;
-  if (!email) return res.status(400).json({ error: "Email is required" });
-
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const entries = await DailyIntake.find({ email, date: today });
-    const totalCalories = entries.reduce((sum, item) => sum + item.calories, 0);
-    const totalProtein = entries.reduce((sum, item) => sum + item.protein, 0);
-
-    res.json({ date: today, totalCalories, totalProtein, entries });
-  } catch (err) {
-    console.error("Error fetching intake:", err);
-    res.status(500).json({ error: "Failed to fetch data" });
-  }
-});
-
-app.get("/api/daily-intake/weekly", async (req, res) => {
-  const { email } = req.query;
-  if (!email) return res.status(400).json({ error: "Email is required" });
-
-  try {
-    const today = new Date();
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      last7Days.push(d.toISOString().split('T')[0]);
-    }
-
-    const entries = await DailyIntake.find({ email, date: { $in: last7Days } });
-    const weeklyData = last7Days.map(date => {
-      const dayEntries = entries.filter(e => e.date === date);
-      return { date, calories: dayEntries.reduce((sum, e) => sum + e.calories, 0) };
+    await Notification.create({
+      email,
+      message: `New meal logged: ${foodName} (+${calories} kcal) 🍽️`,
     });
 
+    res.json({ message: 'Meal added to daily intake', entry: newEntry });
+  } catch (err) {
+    console.error('Daily intake error:', err);
+    res.status(500).json({ error: 'Failed to save data' });
+  }
+});
+
+app.get('/api/daily-intake/today', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  try {
+    const today   = new Date().toISOString().split('T')[0];
+    const entries = await DailyIntake.find({ email, date: today });
+    res.json({
+      date:           today,
+      totalCalories:  entries.reduce((sum, e) => sum + e.calories, 0),
+      totalProtein:   entries.reduce((sum, e) => sum + e.protein,  0),
+      entries,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
+app.get('/api/daily-intake/weekly', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  try {
+    const today    = new Date();
+    const last7    = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (6 - i));
+      return d.toISOString().split('T')[0];
+    });
+    const entries  = await DailyIntake.find({ email, date: { $in: last7 } });
+    const weeklyData = last7.map(date => ({
+      date,
+      calories: entries.filter(e => e.date === date).reduce((sum, e) => sum + e.calories, 0),
+    }));
     res.json({ weeklyData });
   } catch (err) {
-    console.error("Error fetching weekly data:", err);
-    res.status(500).json({ error: "Failed to fetch weekly data" });
+    res.status(500).json({ error: 'Failed to fetch weekly data' });
   }
 });
 
-// 5. REGISTRATION (Academy/Course)
+// ==== WORKOUT REGISTRATION ====
 app.post('/register', async (req, res) => {
   const { name, email, age, gender, goal, level, daysPerWeek, sessionMinutes, equipment, notes } = req.body;
-  if (!name || !email) return res.status(400).json({ error: 'Name and Email are required' });
-
+  if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
   try {
-    const webhookURL = "https://cloud.activepieces.com/api/v1/webhooks/SdYPrCVeXToOiEwQJdtyG";
-    const response = await fetch(webhookURL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, age, gender, goal, level, daysPerWeek, sessionMinutes, equipment, notes }),
+    const webhookURL = 'https://cloud.activepieces.com/api/v1/webhooks/SdYPrCVeXToOiEwQJdtyG';
+    const response   = await fetch(webhookURL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, email, age, gender, goal, level, daysPerWeek, sessionMinutes, equipment, notes }),
+    });
+    if (!response.ok) return res.status(500).json({ error: 'Webhook failed' });
+
+    await Notification.create({
+      email,
+      message: `Welcome, ${name}! Your workout plan registration was successful. Your personalised plan is being prepared 🏋️`,
     });
 
-    const text = await response.text();
-    if (!response.ok) return res.status(500).json({ error: 'Webhook failed' });
-    res.status(200).json({ message: '✅ User registered and data sent successfully!' });
-  } catch (error) {
-    console.error('❌ Error:', error);
+    res.status(200).json({ message: 'User registered and data sent successfully!' });
+  } catch (err) {
+    console.error('Register error:', err);
     res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
-// 6. HEALTH TRACKERS (BMI, Workout, Calories)
+// ==== HEALTH TRACKERS ====
 app.post('/save/bmi', async (req, res) => {
   const { email, height, weight, bmi } = req.body;
   if (!height || !weight || !bmi) return res.status(400).json({ error: 'All fields are required' });
   try {
-    const newBmi = new Bmi({ email, height, weight, bmi });
-    await newBmi.save();
+    const newBmi = await Bmi.create({ email, height, weight, bmi });
+
+    await Notification.create({
+      email,
+      message: `Your BMI was calculated successfully! Current BMI: ${bmi} ⚖️`,
+    });
+
     res.status(200).json({ message: 'BMI saved successfully', Data: newBmi });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save BMI data' });
@@ -369,8 +429,7 @@ app.post('/save/bmi', async (req, res) => {
 
 app.get('/bmi', async (req, res) => {
   try {
-    const bmi = await Bmi.find({});
-    res.status(200).json(bmi);
+    res.status(200).json(await Bmi.find({}));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch BMI data' });
   }
@@ -378,8 +437,7 @@ app.get('/bmi', async (req, res) => {
 
 app.get('/workout', async (req, res) => {
   try {
-    const workout = await Workout.find({});
-    res.status(200).json(workout);
+    res.status(200).json(await Workout.find({}));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch workout data' });
   }
@@ -387,10 +445,15 @@ app.get('/workout', async (req, res) => {
 
 app.post('/save/calories', async (req, res) => {
   const { email, calories } = req.body;
-  if (!calories) return res.status(400).json({ error: 'All fields are required' });
+  if (!calories) return res.status(400).json({ error: 'Calories value is required' });
   try {
-    const newCalories = new Calories({ email, calories });
-    await newCalories.save();
+    const newCalories = await Calories.create({ email, calories });
+
+    await Notification.create({
+      email,
+      message: `Your daily calorie goal has been updated to ${calories} kcal 🎯`,
+    });
+
     res.status(200).json({ message: 'Calories saved successfully', Data: newCalories });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save calories data' });
@@ -399,52 +462,158 @@ app.post('/save/calories', async (req, res) => {
 
 app.get('/calories', async (req, res) => {
   try {
-    const calories = await Calories.find({});
-    res.status(200).json(calories);
+    res.status(200).json(await Calories.find({}));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch calories data' });
   }
 });
 
-// 7. AUTHENTICATION (User Login/Register)
+// ==== AUTHENTICATION ====
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ error: 'All fields are required' });
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
 
   try {
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ error: 'User already exists' });
+    const existing = await User.findOne({ email });
+
+    if (existing) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
 
     const salt = crypto.randomBytes(16).toString('hex');
     const hashedPassword = hashPassword(password, salt);
 
-    const newUser = new User({ name, email, password: hashedPassword, salt });
-    await newUser.save();
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      salt,
+      provider: "credentials",
+    });
 
-    res.status(201).json({ message: 'User registered successfully', user: { name: newUser.name, email: newUser.email } });
+    await Notification.create({
+      email,
+      message: `Welcome ${name}! 🎉 Your account was created successfully.`,
+    });
+
+    return res.status(201).json({
+      message: 'Account created successfully',
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+      },
+    });
+
   } catch (err) {
-    res.status(500).json({ error: 'Registration failed' });
+    return res.status(500).json({ error: 'Registration failed' });
   }
 });
-
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
 
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
     const hashedPassword = hashPassword(password, user.salt);
-    if (hashedPassword !== user.password) return res.status(401).json({ error: 'Invalid credentials' });
 
-    res.json({ message: 'Login successful', user: { id: user._id, name: user.name, email: user.email } });
+    if (hashedPassword !== user.password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // 🔥 Save login log
+    await LoginLog.create({
+      userId: user._id,
+      email: user.email,
+      provider: "credentials",
+      status: "success",
+    });
+
+    return res.json({
+      message: 'Login successful',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+
   } catch (err) {
-    res.status(500).json({ error: 'Login failed' });
+    return res.status(500).json({ error: 'Login failed' });
   }
 });
+app.post("/api/auth/oauth", async (req, res) => {
+  const { name, email, image, provider } = req.body;
 
-// ==== START SERVER ====
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  if (!email) {
+    return res.status(400).json({ error: "Email required" });
+  }
+
+  try {
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        image,
+        provider,
+      });
+    }
+
+    // 🔥 Save login log
+    await LoginLog.create({
+      userId: user._id,
+      email,
+      provider,
+      status: "success",
+    });
+
+    return res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+      },
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: "OAuth failed" });
+  }
 });
+// GET BIO
+app.get("/api/user/bio", async (req, res) => {
+  const { email } = req.query;
+
+  const user = await User.findOne({ email });
+
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.json({ bio: user.bio || "" });
+});
+
+// SAVE BIO
+app.post("/api/user/bio", async (req, res) => {
+  const { email, bio } = req.body;
+
+  await User.updateOne(
+    { email },
+    { $set: { bio } }
+  );
+
+  res.json({ success: true });
+});
+// ==== START ====
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
