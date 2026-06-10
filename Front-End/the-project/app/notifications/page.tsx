@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { FaBell, FaArrowLeft, FaCheck, FaCircle } from 'react-icons/fa';
 import Link from 'next/link';
-
+import { useSession } from 'next-auth/react';
 interface Notification {
   _id: string;
   message: string;
@@ -11,13 +11,13 @@ interface Notification {
   read: boolean;
 }
 
-export default function NotificationsPage({ email }: { email: string }) {
+export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-console.log(API_BASE_URL)
+const {data : session , status} = useSession();
+const email = session?.user?.email  
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!email) return;
 
@@ -63,7 +63,6 @@ console.log(API_BASE_URL)
       setLoading(false);  
       return;
     }
-
     const abortController = new AbortController();
 
     fetchData(abortController.signal).then(() => {
@@ -76,7 +75,11 @@ console.log(API_BASE_URL)
   }, [email, fetchData, markAllReadSilently]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-
+console.log({
+  email,
+  loading,
+  error,
+});
   return (
     <>
       <style jsx>{`
@@ -151,7 +154,7 @@ console.log(API_BASE_URL)
           )}
 
           {/* الإيميل غير متوفر بعد */}
-          {!email && !loading && !error && (
+          {!email && !loading && !error  && (
             <div className="notif-state-card">
               <p className="font-normal text-base text-gray-500">Loading user session...</p>
             </div>

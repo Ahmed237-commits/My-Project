@@ -1,12 +1,10 @@
 'use client';
 
-// 1. تم إضافة useEffect هنا
-import React, { useRef, useState, useEffect } from "react"; 
+import React, { useRef, useState, useEffect, useMemo } from "react"; 
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from 'next-auth/react';
 import { useTheme } from "../../context/ThemeContext";
-// 2. تم إضافة استيراد axios
 import axios from "axios"; 
 import {
   FaArrowLeft, FaEnvelope, FaIdBadge,
@@ -26,23 +24,21 @@ const ProfilePage = () => {
 
   const isDark = theme === "dark";
 
-  const user = {
-    name:   session?.user?.name  ?? "Ahmed Hassan",
-    email:  session?.user?.email ?? "ahmed@example.com",
-    avatar: session?.user?.image ?? "/student-avatar.jpg",
-    id:     (session?.user as any)?.id ?? "—",
-  };
-
-  // 4. تم إصلاح مصفوفة التبعيات لتعتمد مباشرة على القيمة النصية للايميل القادم من الـ session منعاً للـ Infinite Loop
+  const user = useMemo(() => ({
+  name: session?.user?.name,
+  email: session?.user?.email,
+  avatar: session?.user?.image ?? "/student-avatar.jpg",
+  id: (session?.user as any)?.id ?? "—",
+}), [session]);
   const sessionEmail = session?.user?.email;
-
-  useEffect(() => {
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+useEffect(() => {
     const loadBio = async () => {
       if (!sessionEmail) return;
 
       try {
         const res = await axios.get(
-          `http://localhost:8000/api/user/bio`,
+          `${API_BASE_URL}/api/user/bio`,
           { params: { email: sessionEmail } }
         );
 
@@ -53,7 +49,6 @@ const ProfilePage = () => {
         console.log("No bio found or error loading bio");
       }
     };
-
     loadBio();
   }, [sessionEmail]);
 
@@ -371,20 +366,40 @@ const ProfilePage = () => {
               </button>
             </div>
 
-            {/* Notifications — coming soon */}
-            <div className="setting-row" style={{ opacity: .7 }}>
-              <div className="flex items-center gap-3">
-                <div className="setting-icon" style={{ background: "rgba(90,131,200,.12)", color: "#5a83c8" }} aria-hidden="true">
-                  <FaBell />
-                </div>
-                <div>
-                  <p className="text-base font-normal" style={{ color: "var(--clr-primary, #4a3b2f)" }}>Notifications</p>
-                  <p className="text-sm font-normal" style={{ color: "var(--clr-muted, #7a6a5e)" }}>Manage your alerts</p>
-                </div>
-              </div>
-              <span className="coming-soon">Coming soon</span>
-            </div>
+            {/* Notifications */}
+<Link href="/notifications" className="setting-row" style={{ display: "flex" }}>
+  <div className="flex items-center gap-3">
+    <div
+      className="setting-icon"
+      style={{ background: "rgba(90,131,200,.12)", color: "#5a83c8" }}
+      aria-hidden="true"
+    >
+      <FaBell />
+    </div>
 
+    <div>
+      <p
+        className="text-base font-normal"
+        style={{ color: "var(--clr-primary, #4a3b2f)" }}
+      >
+        Notifications
+      </p>
+
+      <p
+        className="text-sm font-normal"
+        style={{ color: "var(--clr-muted, #7a6a5e)" }}
+      >
+        Manage your alerts
+      </p>
+    </div>
+  </div>
+
+  <FaChevronRight
+    className="text-xs"
+    style={{ color: "var(--clr-muted, #7a6a5e)" }}
+    aria-hidden="true"
+  />
+</Link>
             {/* Privacy */}
             <Link href="/privacy" className="setting-row" style={{ display: "flex" }}>
               <div className="flex items-center gap-3">
