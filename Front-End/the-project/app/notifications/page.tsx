@@ -17,7 +17,7 @@ export default function NotificationsPage({ email }: { email: string }) {
   const [error, setError] = useState("");
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
+console.log(API_BASE_URL)
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!email) return;
 
