@@ -13,7 +13,7 @@ declare module "next-auth" {
     };
   }
 }
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 export const authOptions: AuthOptions = {
   providers: [
     GithubProvider({
@@ -37,7 +37,7 @@ export const authOptions: AuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const res = await fetch("http://localhost:8000/api/auth/login", {
+          const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -70,7 +70,7 @@ export const authOptions: AuthOptions = {
       try {
         if (!user?.email) return true;
 
-        await fetch("http://localhost:8000/api/auth/oauth", {
+        await fetch(`${API_BASE_URL}/api/auth/oauth`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -97,7 +97,7 @@ export const authOptions: AuthOptions = {
     signOut: "/signOut",
   },
 
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export default authOptions;
