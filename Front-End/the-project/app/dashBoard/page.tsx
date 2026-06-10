@@ -46,12 +46,10 @@ export default function DashBoard() {
   const { bmi, setBmi }     = useBMI();
   const router              = useRouter();
   const { Tracker, setTracker } = useTracker();
-  const theSpan             = useRef<HTMLSpanElement | null>(null);
-
   const [searchQuery,  setSearchQuery]  = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [mobileSidebar,setMobileSidebar]= useState(false);
-  
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "localhost:8000"
   const isDark = theme === "dark";
 
   const [chartData, setChartData] = useState({
@@ -113,7 +111,7 @@ export default function DashBoard() {
   /* ── data fetching ── */
   const bmiFetching = useCallback(async () => {
     try {
-      const res  = await fetch("http://localhost:8000/bmi");
+      const res  = await fetch(`${API_BASE_URL}/bmi`);
       const data = await res.json();
       setBmi(data[data.length - 1].bmi);
     } catch {}
@@ -121,7 +119,7 @@ export default function DashBoard() {
 
   const caloriesFetching = useCallback(async () => {
     try {
-      const res  = await fetch("http://localhost:8000/calories");
+      const res  = await fetch(`${API_BASE_URL}/calories`);
       const data = await res.json();
       setTracker(data[data.length - 1].calories);
     } catch {}
@@ -130,7 +128,7 @@ export default function DashBoard() {
   const fetchWeeklyData = useCallback(async () => {
     if (!data?.user?.email) return;
     try {
-      const res     = await fetch(`http://localhost:8000/api/daily-intake/weekly?email=${data.user.email}`);
+      const res     = await fetch(`${API_BASE_URL}/api/daily-intake/weekly?email=${data.user.email}`);;
       const apiData = await res.json();
       if (apiData.weeklyData) {
         setChartData({
