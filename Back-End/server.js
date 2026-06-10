@@ -615,5 +615,8 @@ app.post("/api/user/bio", async (req, res) => {
 
   res.json({ success: true });
 });
+app.get('/' , (req , res) => {
+res.send("Hello")
+})
 // ==== START ====
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
