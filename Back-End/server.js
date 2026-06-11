@@ -13,7 +13,7 @@ const app = express();
 dotenv.config();
 
 // ==== CONFIGURATION ====
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // ✅ Load from .env — never hardcode API keys
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
 const PORT = process.env.PORT || 8000;
 
 // Middleware
@@ -24,6 +24,7 @@ app.use(express.static('public'));
 app.use('/images',  express.static(path.join(__dirname, 'images')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(cors());
+
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 // ==== MONGODB ====
@@ -31,7 +32,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch((err) => console.log('❌ DB Error:', err));
 
-// ==== SCHEMAS ====
+// ==== SCHEMAS & MODELS ====
 const DailyIntakeSchema = new mongoose.Schema({
   email:     { type: String, required: true },
   date:      { type: String, required: true },
@@ -74,44 +75,14 @@ const CaloriesSchema = new mongoose.Schema({
 const Calories = mongoose.model('Calories', CaloriesSchema);
 
 const UserSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
-  },
-
-  email: {
-    type: String,
-    required: true,
-    unique: true
-  },
-
-  password: {
-    type: String,
-    required: false
-  },
-
-  salt: {
-    type: String,
-    required: false
-  },
-
-  provider: {
-    type: String,
-    default: "credentials"
-  },
-
-  image: {
-    type: String
-  },
-
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-
-  bio: {
-    type: String
-  }
+  name:      { type: String, required: true },
+  email:     { type: String, required: true, unique: true },
+  password:  { type: String, required: false },
+  salt:      { type: String, required: false },
+  provider:  { type: String, default: "credentials" },
+  image:     { type: String },
+  createdAt: { type: Date, default: Date.now },
+  bio:       { type: String }
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -123,40 +94,47 @@ const NotificationSchema = new mongoose.Schema({
 });
 const Notification = mongoose.model('Notification', NotificationSchema);
 
-
 const LoginLogSchema = new mongoose.Schema({
-  userId: String,
-  email: String,
-  provider: String,
-  status: String,
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-bio : {type:String , required : false}
+  userId:    String,
+  email:     String,
+  provider:  String,
+  status:    String,
+  createdAt: { type: Date, default: Date.now },
 });
-
 const LoginLog = mongoose.model("LoginLog", LoginLogSchema);
+
+// 🆕 سكيما الاحتفاظ بـ سجلات فحص الـ AI (AI Scan Logs) لزيادة كفاءة المنصة وأتمتتها مستقبلاً
+const AIScanLogSchema = new mongoose.Schema({
+  email:     { type: String, required: true },
+  imageUrl:  String,
+  predictedFood: String,
+  estimatedCalories: Number,
+  estimatedProtein: Number,
+  timestamp: { type: Date, default: Date.now }
+});
+const AIScanLog = mongoose.model("AIScanLog", AIScanLogSchema);
+
+
 // ==== HELPERS ====
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
 }
 
 const foodDatabase = {
-  'apple':          { calories: 52,  protein: 0.3 },
-  'banana':         { calories: 89,  protein: 1.1 },
-  'chicken breast': { calories: 165, protein: 31  },
-  'rice':           { calories: 130, protein: 2.7 },
-  'egg':            { calories: 155, protein: 13  },
-  'milk':           { calories: 42,  protein: 3.4 },
-  'bread':          { calories: 265, protein: 9   },
-  'potato':         { calories: 77,  protein: 2   },
-  'beef':           { calories: 250, protein: 26  },
-  'fish':           { calories: 206, protein: 22  },
-  'salad':          { calories: 33,  protein: 1.4 },
-  'pizza':          { calories: 266, protein: 11  },
-  'burger':         { calories: 295, protein: 17  },
-  'pasta':          { calories: 131, protein: 5   },
+  'apple':           { calories: 52,  protein: 0.3 },
+  'banana':          { calories: 89,  protein: 1.1 },
+  'chicken breast':  { calories: 165, protein: 31  },
+  'rice':            { calories: 130, protein: 2.7 },
+  'egg':             { calories: 155, protein: 13  },
+  'milk':            { calories: 42,  protein: 3.4 },
+  'bread':           { calories: 265, protein: 9   },
+  'potato':          { calories: 77,  protein: 2   },
+  'beef':            { calories: 250, protein: 26  },
+  'fish':            { calories: 206, protein: 22  },
+  'salad':           { calories: 33,  protein: 1.4 },
+  'pizza':           { calories: 266, protein: 11  },
+  'burger':          { calories: 295, protein: 17  },
+  'pasta':           { calories: 131, protein: 5   },
 };
 
 const storage = multer.diskStorage({
@@ -165,13 +143,12 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
+
 // ==========================================
 //                  ROUTES
 // ==========================================
 
 // ==== NOTIFICATIONS ====
-
-// GET /api/notifications — fetch notifications (filter by email if provided)
 app.get('/api/notifications', async (req, res) => {
   try {
     const filter = req.query.email ? { email: req.query.email } : {};
@@ -182,7 +159,6 @@ app.get('/api/notifications', async (req, res) => {
   }
 });
 
-// PUT /api/notifications/mark-read — mark all unread as read
 app.put('/api/notifications/mark-read', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -216,7 +192,99 @@ app.post('/chat', async (req, res) => {
   }
 });
 
-// ==== IMAGE UPLOAD & CALORIES CALCULATION ====
+// 🆕 ==== 4. AI INSTANT FOOD SCANNER ENDPOINT ====
+// هذا المسار يستقبل الصورة مباشرة من تطبيق الفرونت-إند ويقوم بتحليلها فورياً عبر Gemini 2.5 Flash Vision
+app.post('/api/food/scan', upload.single('image'), async (req, res) => {
+  try {
+    const image = req.file;
+    const { email } = req.body;
+
+    if (!image) return res.status(400).json({ error: 'Please upload a meal image' });
+    if (!email) return res.status(400).json({ error: 'User email is required to log AI analysis' });
+
+    // 1. معالجة وتصغير حجم الصورة بواسطة Sharp لتحسين الأداء وتوفير الباندويدث
+    const resizedFilename = `resized-${image.filename}`;
+    const resizedPath = path.join('uploads', resizedFilename);
+    
+    await sharp(image.path)
+      .resize({ width: 640 }) 
+      .jpeg({ quality: 75 })
+      .toFile(resizedPath);
+
+    // قراءة الصورة المحسنة وتحويلها إلى Base64 لإرسالها لموديل الرؤية الخاص بـ Gemini
+    const base64Image = fs.readFileSync(resizedPath).toString('base64');
+
+    // حذف الصور الأصلية والمؤقتة للحفاظ على مساحة السيرفر ناصعة ونظيفة
+    if (fs.existsSync(image.path)) fs.unlinkSync(image.path);
+    if (fs.existsSync(resizedPath)) fs.unlinkSync(resizedPath);
+
+    // 2. إعداد الـ Prompt الصارم لإجبار الذكاء الاصطناعي على إعادة النتيجة بصيغة JSON نظيفة فقط
+    const aiPrompt = ` Analyze this food image and provide the estimated food item name, total calories (kcal), and total protein (g). 
+    Your response must be a single, strict, valid JSON object with exactly these keys: "foodName", "calories", "protein". 
+    Do not include markdown blocks like \`\`\`json or any conversational text. Example response format:
+    {"foodName": "Grilled Chicken and White Rice", "calories": 450, "protein": 35} `;
+
+    // 3. استدعاء API الـ Gemini 2.5 Flash لمعالجة المدخلات المتعددة (نص + صورة)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const geminiResponse = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: aiPrompt },
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: base64Image
+              }
+            }
+          ]
+        }]
+      })
+    });
+
+    if (!geminiResponse.ok) throw new Error(`Gemini Vision status code: ${geminiResponse.status}`);
+    
+    const geminiData = await geminiResponse.json();
+    let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+    
+    // تنظيف المخرجات من أي زوائد نصية قد يضيفها الـ LLM أحياناً
+    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsedResult = JSON.parse(rawText);
+
+    // 4. حفظ العملية في سكيما الـ AI Scan Logs لتوثيقها بالسيرفر
+    await AIScanLog.create({
+      email,
+      imageUrl: resizedFilename,
+      predictedFood: parsedResult.foodName || "Unknown Meal",
+      estimatedCalories: Number(parsedResult.calories) || 0,
+      estimatedProtein: Number(parsedResult.protein) || 0
+    });
+
+    // 5. إطلاق إشعار للمستخدم بنجاح الفحص الذكي
+    await Notification.create({
+      email,
+      message: `AI Scan completed! Detected: ${parsedResult.foodName || 'Meal'} 📸✨`
+    });
+
+    // إرجاع النتيجة بالصيغة المتوقعة تماماً في الـ React Component الخاص بك
+    return res.status(200).json({
+      success: true,
+      result: {
+        foodName: parsedResult.foodName || "Detected Meal",
+        calories: Number(parsedResult.calories) || 0,
+        protein: Number(parsedResult.protein) || 0
+      }
+    });
+
+  } catch (err) {
+    console.error('⚠️ AI Food Scanner Error:', err);
+    return res.status(500).json({ error: 'AI analysis failed. Please try again with a clearer image.' });
+  }
+});
+
+// ==== LEGACY AUTO CALORIES CALCULATOR (WEBHOOK) ====
 app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
   try {
     const image = req.file;
@@ -259,7 +327,7 @@ app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
   }
 });
 
-// ==== FOOD DATABASE ====
+// ==== FOOD DATABASE SYSTEM ====
 app.post('/api/food/create', async (req, res) => {
   const { name, calories, protein, email } = req.body;
   if (!name || calories === undefined || protein === undefined) {
@@ -471,17 +539,10 @@ app.get('/calories', async (req, res) => {
 // ==== AUTHENTICATION ====
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'All fields are required' });
-  }
-
+  if (!name || !email || !password) return res.status(400).json({ error: 'All fields are required' });
   try {
     const existing = await User.findOne({ email });
-
-    if (existing) {
-      return res.status(400).json({ error: 'Email already exists' });
-    }
+    if (existing) return res.status(400).json({ error: 'Email already exists' });
 
     const salt = crypto.randomBytes(16).toString('hex');
     const hashedPassword = hashPassword(password, salt);
@@ -501,38 +562,23 @@ app.post('/api/auth/register', async (req, res) => {
 
     return res.status(201).json({
       message: 'Account created successfully',
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-      },
+      user: { id: newUser._id, name: newUser.name, email: newUser.email },
     });
-
   } catch (err) {
     return res.status(500).json({ error: 'Registration failed' });
   }
 });
+
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
-  }
-
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
   try {
     const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
     const hashedPassword = hashPassword(password, user.salt);
+    if (hashedPassword !== user.password) return res.status(401).json({ error: 'Invalid credentials' });
 
-    if (hashedPassword !== user.password) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // 🔥 Save login log
     await LoginLog.create({
       userId: user._id,
       email: user.email,
@@ -542,37 +588,22 @@ app.post('/api/auth/login', async (req, res) => {
 
     return res.json({
       message: 'Login successful',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
+      user: { id: user._id, name: user.name, email: user.email },
     });
-
   } catch (err) {
     return res.status(500).json({ error: 'Login failed' });
   }
 });
+
 app.post("/api/auth/oauth", async (req, res) => {
   const { name, email, image, provider } = req.body;
-
-  if (!email) {
-    return res.status(400).json({ error: "Email required" });
-  }
-
+  if (!email) return res.status(400).json({ error: "Email required" });
   try {
     let user = await User.findOne({ email });
-
     if (!user) {
-      user = await User.create({
-        name,
-        email,
-        image,
-        provider,
-      });
+      user = await User.create({ name, email, image, provider });
     }
 
-    // 🔥 Save login log
     await LoginLog.create({
       userId: user._id,
       email,
@@ -581,42 +612,39 @@ app.post("/api/auth/oauth", async (req, res) => {
     });
 
     return res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        image: user.image,
-      },
+      user: { id: user._id, name: user.name, email: user.email, image: user.image },
     });
-
   } catch (err) {
     return res.status(500).json({ error: "OAuth failed" });
   }
 });
+
 // GET BIO
 app.get("/api/user/bio", async (req, res) => {
-  const { email } = req.query;
-
-  const user = await User.findOne({ email });
-
-  if (!user) return res.status(404).json({ error: "User not found" });
-
-  res.json({ bio: user.bio || "" });
+  try {
+    const { email } = req.query;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json({ bio: user.bio || "" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch bio" });
+  }
 });
 
 // SAVE BIO
 app.post("/api/user/bio", async (req, res) => {
-  const { email, bio } = req.body;
-
-  await User.updateOne(
-    { email },
-    { $set: { bio } }
-  );
-
-  res.json({ success: true });
+  try {
+    const { email, bio } = req.body;
+    await User.updateOne({ email }, { $set: { bio } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save bio" });
+  }
 });
-app.get('/' , (req , res) => {
-res.send("Hello")
-})
+
+app.get('/', (req, res) => {
+  res.send("Healthy Life API Server is running smoothly! 🚀");
+});
+
 // ==== START ====
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
