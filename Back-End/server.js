@@ -286,24 +286,29 @@ app.post('/api/food/scan', upload.single('image'), async (req, res) => {
 });
 
 // ==== LEGACY AUTO CALORIES CALCULATOR (WEBHOOK) ====
-// ==== LEGACY AUTO CALORIES CALCULATOR (WEBHOOK) ====
 app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
   try {
     const image = req.file;
     if (!image) return res.status(400).json({ error: 'Image is required' });
 
-    const base64Image = fs.readFileSync(image.path).toString('base64');
+    const resizedPath = `uploads/resized-${image.filename}`;
 
+    // 1. تصغير الصورة وضغطها أولاً
     await sharp(image.path)
-      .resize({ width: 720 })
-      .jpeg({ quality: 80 })
-      .toFile(`uploads/resized-${image.filename}`);
+      .resize({ width: 600 }) // تصغير العرض لـ 600 بكسل كافي جداً للذكاء الاصطناعي
+      .jpeg({ quality: 70 })  // تقليل الجودة لـ 70% لتقليل المساحة
+      .toFile(resizedPath);
 
+    // 2. تحويل الصورة "المصغرة" لـ Base64 وليس الأصلية 🎯
+    const base64Image = fs.readFileSync(resizedPath).toString('base64');
+
+    // 3. حذف الملفات المؤقتة فوراً من الهارد
     fs.unlinkSync(image.path);
+    fs.unlinkSync(resizedPath);
 
-    // 🎯 تم تحديث الرابط هنا للـ Webhook الجديد بتاعك
     const webhookURL = 'https://cloud.activepieces.com/api/v1/webhooks/fzmHgVLa2xTaK6l1HRFzT';
     
+    // 4. إرسال الطلب بحجم خفيف وسريع
     const response = await fetch(webhookURL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -311,7 +316,7 @@ app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
         name:        req.body.name,
         email:       req.body.email,
         imageBase64: base64Image,
-        mimeType:    image.mimetype,
+        mimeType:    'image/jpeg',
       }),
     });
 
@@ -320,17 +325,16 @@ app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
     if (req.body.email) {
       await Notification.create({
         email:   req.body.email,
-        message: 'Your meal photo was analysed and sent for calorie calculation successfully! 📸',
+        message: 'Your meal photo was analysed and sent successfully! 📸',
       });
     }
 
-    res.status(200).json({ message: 'Image sent to automation successfully!', automationResponse: await response.text() });
+    res.status(200).json({ message: 'Image sent to automation successfully!' });
   } catch (err) {
     console.error('Image processing error:', err);
     res.status(500).json({ error: 'Image processing failed' });
   }
 });
-
 // ==== FOOD DATABASE SYSTEM ====
 app.post('/api/food/create', async (req, res) => {
   const { name, calories, protein, email } = req.body;
