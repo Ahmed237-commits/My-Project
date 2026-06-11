@@ -27,12 +27,13 @@ app.use(cors());
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
+const webhookURL = process.env.ACTIVEPIECES_WEBHOOK_URL;
 // ==== MONGODB ====
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch((err) => console.log('❌ DB Error:', err));
 
-// ==== SCHEMAS & MODELS ====
+  // ==== SCHEMAS & MODELS ====
 const DailyIntakeSchema = new mongoose.Schema({
   email:     { type: String, required: true },
   date:      { type: String, required: true },
@@ -285,6 +286,7 @@ app.post('/api/food/scan', upload.single('image'), async (req, res) => {
 });
 
 // ==== LEGACY AUTO CALORIES CALCULATOR (WEBHOOK) ====
+// ==== LEGACY AUTO CALORIES CALCULATOR (WEBHOOK) ====
 app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
   try {
     const image = req.file;
@@ -299,7 +301,9 @@ app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
 
     fs.unlinkSync(image.path);
 
-    const webhookURL = 'https://cloud.activepieces.com/api/v1/webhooks/SfbNicrtC0umtVrHAuxdP';
+    // 🎯 تم تحديث الرابط هنا للـ Webhook الجديد بتاعك
+    const webhookURL = 'https://cloud.activepieces.com/api/v1/webhooks/fzmHgVLa2xTaK6l1HRFzT';
+    
     const response = await fetch(webhookURL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
