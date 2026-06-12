@@ -5,6 +5,7 @@ import { FaEnvelope, FaMapMarkerAlt, FaPhone, FaFacebook, FaTwitter, FaInstagram
 import { useState , useEffect } from 'react';
 import sal from "sal.js";
 import { useTheme } from '../context/ThemeContext';
+import emailjs from '@emailjs/browser'; // استيراد مكتبة EmailJS
 
 const socialLinks = [
   { href: "#", icon: FaFacebook, label: "Facebook" },
@@ -17,6 +18,9 @@ const ContactPage = () => {
   const isDark = theme === 'dark';
 
   useEffect(() => {
+    // عمل Init للـ EmailJS باستخدام الـ Public Key الخاص بك
+    emailjs.init("TFMSBH0JY4zVDp6dr");
+
     sal({
       threshold: .1,
       once: true,
@@ -26,6 +30,7 @@ const ContactPage = () => {
 
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -34,15 +39,30 @@ const ContactPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setStatus('Sending The Message...');
+    setStatus('Sending... ⏳');
+    setLoading(true);
 
     try {
-      setTimeout(() => {
-        setStatus('Sent Your Message successfully');
-        setFormData({ name: '', email: '', message: '' });
-      }, 1500);
+      // تجهيز الـ Parameters بناءً على إعدادات الـ EmailJS
+      const templateParams = {
+        name: formData.name,
+        user_email: formData.email,
+        to_email: 'aethefifthofjuly@gmail.com',
+        message: formData.message,
+        timestamp: new Date().toLocaleString('en-US'),
+        title: 'Hello Ahmed Eissa'
+      };
+
+      // إرسال الإيميل باستخدام الـ Service ID والـ Template ID
+      await emailjs.send('service_eooljyp', 'template_0fzf69j', templateParams);
+
+      setStatus('Your message has been sent successfully! ✅');
+      setFormData({ name: '', email: '', message: '' }); // تفريغ الحقول بعد النجاح
     } catch (error) {
-      setStatus('There Is An Error, Try Again');
+      console.error('EmailJS error:', error);
+      setStatus('Failed to send. Please try again later. ❌');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,8 +98,7 @@ const ContactPage = () => {
           color: ${isDark ? '#e8d5c0' : '#4a3b2f'};
         }
       `}</style>
-
-      <div className="contact-root font-sans leading-relaxed" dir="rtl">
+      <div className="contact-root font-sans leading-relaxed" dir="ltr">
         
         {/* قسم المقدمة (Hero Section) */}
         <section className={`py-20 text-center transition-all duration-300 ${isDark ? 'bg-gradient-to-br from-[#2d241e] to-[#120e0b]' : 'bg-gradient-to-br from-[#e3dbcf] to-[#5A4A42]'} text-white`}>
@@ -97,7 +116,7 @@ const ContactPage = () => {
             
             {/* كارت معلومات الاتصال */}
             <div className="contact-card p-8 rounded-2xl">
-              <h2 className="text-2xl font-bold contact-heading mb-6">معلومات الاتصال</h2>
+              <h2 className="text-2xl font-bold contact-heading mb-6">Contact Information</h2>
               
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
@@ -133,10 +152,8 @@ const ContactPage = () => {
                       key={index} 
                       href={link.href} 
                       aria-label={link.label} 
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                        isDark ? 'bg-[#342a22] text-[#c8956c] hover:bg-[#c8956c] hover:text-white' : 'bg-[#f5e6d8] text-[#5A4A42] hover:bg-[#5A4A42] hover:text-white'
-                      }`}
-                    >
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${                        isDark ? 'bg-[#342a22] text-[#c8956c] hover:bg-[#c8956c] hover:text-white' : 'bg-[#f5e6d8] text-[#5A4A42] hover:bg-[#5A4A42] hover:text-white'
+                      }`}                    >
                       <link.icon className="text-xl" />
                     </Link>
                   ))}
@@ -190,9 +207,10 @@ const ContactPage = () => {
 
                 <button
                   type="submit"
-                  className="w-full bg-[#c8956c] hover:bg-[#b07e56] cursor-pointer text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all transform active:scale-95"
+                  disabled={loading}
+                  className={`w-full bg-[#c8956c] hover:bg-[#b07e56] cursor-pointer text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all transform active:scale-95 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  Sending Messages
+                  {loading ? 'Sending...' : 'Sending Messages'}
                 </button>
 
                 {status && (
