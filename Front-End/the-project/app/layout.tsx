@@ -11,6 +11,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { HealthProvider } from './context/HealthContext';
 import { TrackerProvider } from './context/CaloriesTrackerContext';
 import Icon from '@/theEnvironment/1762025728119.png'
+import { Analytics } from "@vercel/analytics/next"
 const jomhuria = Jomhuria({
   variable: "--font-jomhuria",
   subsets: ["latin"],

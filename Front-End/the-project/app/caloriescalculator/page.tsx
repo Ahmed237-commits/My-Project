@@ -12,7 +12,7 @@ import Link from "next/link";
 
 type Tab = 'manual' | 'create' | 'upload';
 
-// قراءة رابط الباك-إند ديناميكياً من متغيرات البيئة (وفي حالة عدم وجوده يقرأ الـ Localhost الافتراضي برقم بورت 8000)
+// قراءة رابط الباك-إند ديناميكياً من متغيرات البيئة
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function CaloriesUploader() {
@@ -54,17 +54,23 @@ export default function CaloriesUploader() {
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualFood.trim()) return;
-    setManualLoading(true); setManualResult(null);
+    setManualLoading(true); 
+    setManualResult(null);
     try {
       const res = await fetch(`${API_BASE_URL}/api/food/calculate`, {
         method: "POST", 
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ foodName: manualFood, weight: manualWeight }),
+        body: JSON.stringify({ 
+          foodName: manualFood.trim(), 
+          weight: Number(manualWeight) || 100 
+        }),
       });
-      if (!res.ok) throw new Error();
-      setManualResult(await res.json());
-    } catch { 
-      setManualResult({ error: true, message: "Failed to calculate nutrition. Please try again." }); 
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to calculate");
+      
+      setManualResult(data);
+    } catch (err: any) { 
+      setManualResult({ error: true, message: err.message || "Failed to calculate nutrition. Please try again." }); 
     } finally { 
       setManualLoading(false); 
     }
@@ -87,6 +93,7 @@ export default function CaloriesUploader() {
           protein: Number(protein),
         }),
       });
+      const data = await res.json();
       if (res.ok) {
         Swal.fire({ 
           title: 'Added!', 
@@ -95,11 +102,16 @@ export default function CaloriesUploader() {
           timer: 2000, 
           showConfirmButton: false 
         });
-        // إفراغ الـ States بعد النجاح
-        setManualFood(""); setManualResult(null); setUploadResult(null); setImage(null); setImagePreview(null);
-        refreshHealthData(); // تحديث الـ Context بالبيانات الجديدة تلقائياً
+        // إفراغ الـ States بعد النجاح لتجهيز المدخل التالي
+        setManualFood(""); 
+        setManualResult(null); 
+        setUploadResult(null); 
+        setImage(null); 
+        setImagePreview(null);
+        
+        refreshHealthData(); // تحديث الـ Context بالبيانات الجديدة مباشرة للـ Dashboard
       } else { 
-        Swal.fire('Error', 'Failed to save to daily log.', 'error'); 
+        Swal.fire('Error', data.message || 'Failed to save to daily log.', 'error'); 
       }
     } catch { 
       Swal.fire('Error', 'Network error. Could not connect to server.', 'error'); 
@@ -116,7 +128,7 @@ export default function CaloriesUploader() {
         method: "POST", 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          name: createForm.name, 
+          name: createForm.name.trim(), 
           calories: Number(createForm.calories), 
           protein: Number(createForm.protein), 
           email: session?.user?.email 
@@ -127,7 +139,7 @@ export default function CaloriesUploader() {
         Swal.fire('Success', 'Custom food added to database!', 'success');
         setCreateForm({ name: "", calories: "", protein: "" });
         setActiveTab('manual'); 
-        setManualFood(data.food.name); // يحول المستخدم تلقائياً للتابة الأولى مع تعبئة الاسم
+        setManualFood(data.food.name); // تحويل تلقائي للتابة الأولى مع تعبئة الاسم الجديد
       } else { 
         Swal.fire('Error', data.error || 'Failed to create food.', 'error'); 
       }
@@ -144,16 +156,20 @@ export default function CaloriesUploader() {
     if (!image) { Swal.fire('Warning', 'Please upload or snap a photo first.', 'warning'); return; }
     if (!session?.user?.email) { Swal.fire('Error', 'You must be logged in to use AI Scanner.', 'error'); return; }
     
-    setUploadLoading(true); setUploadResult(null);
+    setUploadLoading(true); 
+    setUploadResult(null);
     try {
       const formData = new FormData();
       formData.append("email", session.user.email);
-      formData.append("image", image);
+      formData.append("image", image); // يتوافق مع حقل استقبال الملفات في الباك اند (مثال: multer.single('image'))
 
-      const res = await fetch(`${API_BASE_URL}/api/food/scan`, { method: "POST", body: formData });
+      const res = await fetch(`${API_BASE_URL}/api/food/scan`, { 
+        method: "POST", 
+        body: formData 
+        // الملاحظة: لا تضع Content-Type يدوياً هنا، المتصفح سيقوم بوضعها مع الـ Boundary المناسب تلقائياً
+      });
       const data = await res.json();
       
-      // نتوقع استلام النتيجة بشكل مهندم: { success: true, result: { foodName: "...", calories: 350, protein: 20 } }
       if (res.ok && data.result) {
         setUploadResult({ error: false, ai: data.result });
       } else {
