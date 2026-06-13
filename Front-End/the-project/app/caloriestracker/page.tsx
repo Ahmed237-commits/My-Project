@@ -89,7 +89,7 @@ const {Tracker , setTracker} = useTracker();
 
           <button
             onClick={calculateCalories}
-            className={`w-full p-3 rounded-2xl text-[26px] shadow-md transition ${theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-[#6a9c5f] text-white hover:bg-[#5a8a50]'}`}
+            className={`w-full p-3 rounded-2xl text-[26px] shadow-md transition ${theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-[#5A4A42] text-white hover:bg-[#5a8a50]'}`}
           >
             Calculate
           </button>

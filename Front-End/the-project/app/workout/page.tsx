@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import sal from "sal.js";
+// @ts-ignore: CSS side-effect import without type declarations
 import "sal.js/dist/sal.css";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,7 +33,9 @@ export default function WorkoutFormPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
-  const update = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
+  const API_BASE_URL =process.env.NEXT_PUBLIC_API_URL
+ 
+const update = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
 
   const toggleEquip = (key: string) =>
     setForm((p) => ({
@@ -63,7 +66,7 @@ export default function WorkoutFormPage() {
     };
     try {
       setSubmitting(true);
-      const res = await fetch("http://localhost:8000/register", {
+      const res = await fetch(`${API_BASE_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form), // ✅ هنا كانت المشكلة
@@ -75,7 +78,7 @@ export default function WorkoutFormPage() {
         console.log("✅ Data sent successfully:", data);
         setResult({
           ok: true,
-          message: "✅ Submitted successfully! Your workout request will be sent to You In Some Minutes.",
+          message: "✅ Submitted successfully! Your workout request will be sent to You To Your Email In Some Minutes.",
         });
       } else {
         console.error("❌ Server error:", data);

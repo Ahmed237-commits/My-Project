@@ -101,7 +101,7 @@ const ContactPage = () => {
       <div className="contact-root font-sans leading-relaxed" dir="ltr">
         
         {/* قسم المقدمة (Hero Section) */}
-        <section className={`py-20 text-center transition-all duration-300 ${isDark ? 'bg-gradient-to-br from-[#2d241e] to-[#120e0b]' : 'bg-gradient-to-br from-[#e3dbcf] to-[#5A4A42]'} text-white`}>
+        <section className={`py-20 text-center transition-all duration-300 ${isDark ? 'bg-linear-to-br from-[#2d241e] to-[#120e0b]' : 'bg-linear-to-br from-[#e3dbcf] to-[#5A4A42]'} text-white`}>
           <h1 className="text-4xl md:text-6xl font-extrabold mb-4 drop-shadow-md">
             Contact Us
           </h1>
@@ -120,7 +120,7 @@ const ContactPage = () => {
               
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <FaMapMarkerAlt className="text-xl text-[#c8956c] mt-1 flex-shrink-0" />
+                  <FaMapMarkerAlt className="text-xl text-[#c8956c] mt-1 shrink-0" />
                   <div>
                     <h3 className="font-bold text-base contact-heading">Location</h3>
                     <p className="text-sm contact-muted">Egypt - Behira - AboHommos</p>
@@ -128,7 +128,7 @@ const ContactPage = () => {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <FaPhone className="text-xl text-[#c8956c] mt-1 flex-shrink-0" />
+                  <FaPhone className="text-xl text-[#c8956c] mt-1 shrink-0" />
                   <div>
                     <h3 className="font-bold text-base contact-heading">Phone Number</h3>
                     <p className="text-sm contact-muted" dir="ltr">+20 1273024592</p>
@@ -136,7 +136,7 @@ const ContactPage = () => {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <FaEnvelope className="text-xl text-[#c8956c] mt-1 flex-shrink-0" />
+                  <FaEnvelope className="text-xl text-[#c8956c] mt-1 shrink-0" />
                   <div>
                     <h3 className="font-bold text-base contact-heading">Email</h3>
                     <p className="text-sm contact-muted">aethefifhtofjuly@gmail.com</p>
