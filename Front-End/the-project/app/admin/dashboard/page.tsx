@@ -20,7 +20,6 @@ export default async function DashboardPage() {
         <div className="p-4 bg-white shadow rounded">تسجيلات الدخول: {data.stats.totalLogins}</div>
       </div>
 
-      {/* هنا يمكنك تمرير الـ data.usersList أو data.chartData للمكونات الأخرى */}
     </div>
   );
 }

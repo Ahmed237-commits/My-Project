@@ -17,7 +17,7 @@ export async function getDashboardData() {
     ]);
 
     if (!statsRes.ok || !chartRes.ok || !usersRes.ok) {
-      throw new Error("فشل في جلب البيانات من السيرفر.");
+      throw new Error("server Error");
     }
 
     const stats = await statsRes.json();
