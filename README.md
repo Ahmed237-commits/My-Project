@@ -43,5 +43,5 @@ Ensure you have Docker and Docker Compose installed on your local environment.
 
 1. **Clone the Repository**
 ```bash
-   git clone [https://github.com/your-username/healthy-life.git](https://github.com/your-username/healthy-life.git)
-   cd healthy-life
+   git clone [https://github.com/Ahmed237-commits/My-Project.git](https://github.com/Ahmed237-commits/My-Project.git)
+   cd Project-Root
