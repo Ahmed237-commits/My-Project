@@ -1,15 +1,26 @@
-// src/app/admin/dashboard/page.jsx
-import React from 'react';
-import { getDashboardData } from '../../services/page';
-import DashboardClient from './DashboardClient'; // هنكتبها تحت حالاً
+// app/admin/dashboard/page.tsx
 
-export const metadata = {
-  title: 'لوحة التحكم | Healthy Life',
-};
+import { getDashboardData } from "@/src/services/admin"; 
 
-export default async function AdminDashboardPage() {
-  // جلب البيانات مباشرة على السيرفر قبل ما الصفحة تروح للمتصفح ⚡
-  const data = await getDashboardData();
+export default async function DashboardPage() {
+  const data = await getDashboardData(); 
 
-  return <DashboardClient initialData={data} />;
+  if (data.error) {
+    return <div className="text-red-500">حدث خطأ: {data.error}</div>;
+  }
+
+  return (
+    <div className="p-6">
+      <h1>لوحة تحكم الأدمن 📊</h1>
+      
+      <div className="grid grid-cols-4 gap-4 my-4">
+        <div className="p-4 bg-white shadow rounded">المستخدمين: {data.stats.totalUsers}</div>
+        <div className="p-4 bg-white shadow rounded">الفحوصات: {data.stats.totalScans}</div>
+        <div className="p-4 bg-white shadow rounded">مؤشرات الـ BMI: {data.stats.totalBMIs}</div>
+        <div className="p-4 bg-white shadow rounded">تسجيلات الدخول: {data.stats.totalLogins}</div>
+      </div>
+
+      {/* هنا يمكنك تمرير الـ data.usersList أو data.chartData للمكونات الأخرى */}
+    </div>
+  );
 }
