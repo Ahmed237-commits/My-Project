@@ -7,107 +7,125 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+
+// ⚠️ 1. أول حاجة: تحميل المتغيرات البيئية
+dotenv.config();
+
+// ⚠️ 2. قراءة المتغيرات
+const BACKEND_JWT_SECRET = process.env.BACKEND_JWT_SECRET;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const PORT = process.env.PORT || 8000;
+const JWT_SECRET = process.env.JWT_SECRET || "HealthyLife_Super_Secret_JWT_Key_2026";
+
+// ⚠️ 3. تأكيد تحميل المتغيرات
+console.log("🔧 Environment Check:");
+console.log("   BACKEND_JWT_SECRET:", BACKEND_JWT_SECRET ? "✅ Loaded" : "❌ Missing");
+console.log("   GEMINI_API_KEY:", GEMINI_API_KEY ? "✅ Loaded" : "❌ Missing");
+console.log("   PORT:", PORT);
+
+// إعداد fetch لـ CommonJS
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
-dotenv.config();
 
-// ==== CONFIGURATION ====
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
-const PORT = process.env.PORT || 8000;
+// ==========================================
+//           MIDDLEWARE SETUP
+// ==========================================
 
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  credentials: true
+}));
+
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
-app.use('/images',  express.static(path.join(__dirname, 'images')));
+app.use('/images', express.static(path.join(__dirname, 'images')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(cors());
 
-if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+  console.log("📁 Created uploads directory");
+}
 
-const webhookURL = process.env.ACTIVEPIECES_WEBHOOK_URL;
-// ==== MONGODB ====
+// ==========================================
+//           MONGODB CONNECTION
+// ==========================================
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
-  .catch((err) => console.log('❌ DB Error:', err));
+  .catch((err) => console.error('❌ DB Error:', err));
 
-  // ==== SCHEMAS & MODELS ====
+// ==========================================
+//           SCHEMAS & MODELS
+// ==========================================
+
 const DailyIntakeSchema = new mongoose.Schema({
-  email:     { type: String, required: true },
-  date:      { type: String, required: true },
-  foodName:  String,
-  calories:  Number,
-  protein:   Number,
+  email: { type: String, required: true, index: true },
+  date: { type: String, required: true, index: true },
+  foodName: String,
+  calories: Number,
+  protein: Number,
   timestamp: { type: Date, default: Date.now },
 });
 const DailyIntake = mongoose.model('DailyIntake', DailyIntakeSchema);
 
 const FoodItemSchema = new mongoose.Schema({
-  name:      { type: String, required: true, unique: true },
-  calories:  { type: Number, required: true },
-  protein:   { type: Number, required: true },
+  name: { type: String, required: true, unique: true, lowercase: true },
+  displayName: { type: String, required: true },
+  calories: { type: Number, required: true },
+  protein: { type: Number, required: true },
   createdBy: { type: String, default: 'system' },
 });
 const FoodItem = mongoose.model('FoodItem', FoodItemSchema);
 
 const BmiSchema = new mongoose.Schema({
-  email:     { type: String, required: true },
-  height:    { type: Number, required: true },
-  weight:    { type: Number, required: true },
-  bmi:       { type: Number, required: true },
+  email: { type: String, required: true },
+  height: { type: Number, required: true },
+  weight: { type: Number, required: true },
+  bmi: { type: Number, required: true },
   timestamp: { type: Date, default: Date.now },
 });
 const Bmi = mongoose.model('Bmi', BmiSchema);
 
-const WorkoutSchema = new mongoose.Schema({
-  email:     { type: String, required: true },
-  workout:   { type: String, required: true },
-  timestamp: { type: Date, default: Date.now },
-});
-const Workout = mongoose.model('Workout', WorkoutSchema);
-
-const CaloriesSchema = new mongoose.Schema({
-  email:     { type: String, required: true },
-  calories:  { type: Number, required: true },
-  timestamp: { type: Date, default: Date.now },
-});
-const Calories = mongoose.model('Calories', CaloriesSchema);
-
 const UserSchema = new mongoose.Schema({
-  name:      { type: String, required: true },
-  email:     { type: String, required: true, unique: true },
-  password:  { type: String, required: false },
-  salt:      { type: String, required: false },
-  provider:  { type: String, default: "credentials" },
-  image:     { type: String },
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  password: { type: String },
+  salt: { type: String },
+  provider: { type: String, default: "credentials" },
+  image: { type: String },
+  role: { type: String, default: "user", enum: ["user", "admin"] },
   createdAt: { type: Date, default: Date.now },
-  bio:       { type: String }
+  bio: { type: String }
 });
 const User = mongoose.model('User', UserSchema);
 
 const NotificationSchema = new mongoose.Schema({
-  email:     { type: String, required: false },
-  message:   { type: String, required: true },
-  read:      { type: Boolean, default: false },
+  email: { type: String, index: true },
+  message: { type: String, required: true },
+  read: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 const Notification = mongoose.model('Notification', NotificationSchema);
 
 const LoginLogSchema = new mongoose.Schema({
-  userId:    String,
-  email:     String,
-  provider:  String,
-  status:    String,
+  userId: String,
+  email: String,
+  provider: String,
+  status: String,
   createdAt: { type: Date, default: Date.now },
 });
 const LoginLog = mongoose.model("LoginLog", LoginLogSchema);
 
-// 🆕 سكيما الاحتفاظ بـ سجلات فحص الـ AI (AI Scan Logs) لزيادة كفاءة المنصة وأتمتتها مستقبلاً
 const AIScanLogSchema = new mongoose.Schema({
-  email:     { type: String, required: true },
-  imageUrl:  String,
+  email: { type: String, required: true },
+  imageUrl: String,
   predictedFood: String,
   estimatedCalories: Number,
   estimatedProtein: Number,
@@ -115,477 +133,199 @@ const AIScanLogSchema = new mongoose.Schema({
 });
 const AIScanLog = mongoose.model("AIScanLog", AIScanLogSchema);
 
+// ==========================================
+//           HELPERS
+// ==========================================
 
-// ==== HELPERS ====
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
 }
 
 const foodDatabase = {
-  'apple':           { calories: 52,  protein: 0.3 },
-  'banana':          { calories: 89,  protein: 1.1 },
-  'chicken breast':  { calories: 165, protein: 31  },
-  'rice':            { calories: 130, protein: 2.7 },
-  'egg':             { calories: 155, protein: 13  },
-  'milk':            { calories: 42,  protein: 3.4 },
-  'bread':           { calories: 265, protein: 9   },
-  'potato':          { calories: 77,  protein: 2   },
-  'beef':            { calories: 250, protein: 26  },
-  'fish':            { calories: 206, protein: 22  },
-  'salad':           { calories: 33,  protein: 1.4 },
-  'pizza':           { calories: 266, protein: 11  },
-  'burger':          { calories: 295, protein: 17  },
-  'pasta':           { calories: 131, protein: 5   },
+  'apple': { calories: 52, protein: 0.3 },
+  'banana': { calories: 89, protein: 1.1 },
+  'chicken breast': { calories: 165, protein: 31 },
+  'rice': { calories: 130, protein: 2.7 },
+  'egg': { calories: 155, protein: 13 },
+  'milk': { calories: 42, protein: 3.4 },
+  'bread': { calories: 265, protein: 9 },
+  'potato': { calories: 77, protein: 2 },
+  'beef': { calories: 250, protein: 26 },
+  'fish': { calories: 206, protein: 22 },
+  'salad': { calories: 33, protein: 1.4 },
+  'pizza': { calories: 266, protein: 11 },
+  'burger': { calories: 295, protein: 17 },
+  'pasta': { calories: 131, protein: 5 },
 };
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename:    (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
+// ==========================================
+//       ADMIN EMAILS CONFIGURATION
+// ==========================================
+
+const ADMIN_EMAILS = [
+  "aethefifthofjuly@gmail.com",
+];
+
+const SUPER_ADMINS = [
+  "aethefifthofjuly@gmail.com",
+];
 
 // ==========================================
-//                  ROUTES
+//           MIDDLEWARE
 // ==========================================
 
-// ==== NOTIFICATIONS ====
-app.get('/api/notifications', async (req, res) => {
-  try {
-    const filter = req.query.email ? { email: req.query.email } : {};
-    const notifications = await Notification.find(filter).sort({ createdAt: -1 });
-    res.status(200).json(notifications);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch notifications' });
+async function isAdmin(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ 
+      error: 'Unauthorized: No session token found.',
+      message: 'يجب تسجيل الدخول للوصول إلى هذه الصفحة'
+    });
   }
-});
 
-app.put('/api/notifications/mark-read', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email is required' });
   try {
-    await Notification.updateMany({ email, read: false }, { $set: { read: true } });
-    res.status(200).json({ success: true, message: 'All notifications marked as read' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to update notifications' });
-  }
-});
-
-// ==== GEMINI CHATBOT ====
-app.post('/chat', async (req, res) => {
-  const { message } = req.body;
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] }),
-      }
-    );
-    if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
-    const data = await response.json();
-    const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No response received.';
-    res.status(200).json({ reply: botReply });
-  } catch (err) {
-    console.error('Gemini error:', err);
-    res.status(500).json({ reply: 'Error communicating with AI.' });
-  }
-});
-
-// 🆕 ==== 4. AI INSTANT FOOD SCANNER ENDPOINT ====
-// هذا المسار يستقبل الصورة مباشرة من تطبيق الفرونت-إند ويقوم بتحليلها فورياً عبر Gemini 2.5 Flash Vision
-app.post('/api/food/scan', upload.single('image'), async (req, res) => {
-  try {
-    const image = req.file;
-    const { email } = req.body;
-
-    if (!image) return res.status(400).json({ error: 'Please upload a meal image' });
-    if (!email) return res.status(400).json({ error: 'User email is required to log AI analysis' });
-
-    // 1. معالجة وتصغير حجم الصورة بواسطة Sharp لتحسين الأداء وتوفير الباندويدث
-    const resizedFilename = `resized-${image.filename}`;
-    const resizedPath = path.join('uploads', resizedFilename);
+    const decoded = jwt.verify(token, BACKEND_JWT_SECRET);
     
-    await sharp(image.path)
-      .resize({ width: 640 }) 
-      .jpeg({ quality: 75 })
-      .toFile(resizedPath);
-
-    // قراءة الصورة المحسنة وتحويلها إلى Base64 لإرسالها لموديل الرؤية الخاص بـ Gemini
-    const base64Image = fs.readFileSync(resizedPath).toString('base64');
-
-    // حذف الصور الأصلية والمؤقتة للحفاظ على مساحة السيرفر ناصعة ونظيفة
-    if (fs.existsSync(image.path)) fs.unlinkSync(image.path);
-    if (fs.existsSync(resizedPath)) fs.unlinkSync(resizedPath);
-
-    // 2. إعداد الـ Prompt الصارم لإجبار الذكاء الاصطناعي على إعادة النتيجة بصيغة JSON نظيفة فقط
-    const aiPrompt = ` Analyze this food image and provide the estimated food item name, total calories (kcal), and total protein (g). 
-    Your response must be a single, strict, valid JSON object with exactly these keys: "foodName", "calories", "protein". 
-    Do not include markdown blocks like \`\`\`json or any conversational text. Example response format:
-    {"foodName": "Grilled Chicken and White Rice", "calories": 450, "protein": 35} `;
-
-    // 3. استدعاء API الـ Gemini 2.5 Flash لمعالجة المدخلات المتعددة (نص + صورة)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-    const geminiResponse = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: aiPrompt },
-            {
-              inlineData: {
-                mimeType: "image/jpeg",
-                data: base64Image
-              }
-            }
-          ]
-        }]
-      })
-    });
-
-    if (!geminiResponse.ok) throw new Error(`Gemini Vision status code: ${geminiResponse.status}`);
+    let user = null;
     
-    const geminiData = await geminiResponse.json();
-    let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+    if (mongoose.Types.ObjectId.isValid(decoded.id)) {
+      user = await User.findById(decoded.id);
+    } else {
+      user = await User.findOne({ email: decoded.email?.toLowerCase() });
+    }
     
-    // تنظيف المخرجات من أي زوائد نصية قد يضيفها الـ LLM أحياناً
-    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsedResult = JSON.parse(rawText);
-
-    // 4. حفظ العملية في سكيما الـ AI Scan Logs لتوثيقها بالسيرفر
-    await AIScanLog.create({
-      email,
-      imageUrl: resizedFilename,
-      predictedFood: parsedResult.foodName || "Unknown Meal",
-      estimatedCalories: Number(parsedResult.calories) || 0,
-      estimatedProtein: Number(parsedResult.protein) || 0
-    });
-
-    // 5. إطلاق إشعار للمستخدم بنجاح الفحص الذكي
-    await Notification.create({
-      email,
-      message: `AI Scan completed! Detected: ${parsedResult.foodName || 'Meal'} 📸✨`
-    });
-
-    // إرجاع النتيجة بالصيغة المتوقعة تماماً في الـ React Component الخاص بك
-    return res.status(200).json({
-      success: true,
-      result: {
-        foodName: parsedResult.foodName || "Detected Meal",
-        calories: Number(parsedResult.calories) || 0,
-        protein: Number(parsedResult.protein) || 0
-      }
-    });
-
-  } catch (err) {
-    console.error('⚠️ AI Food Scanner Error:', err);
-    return res.status(500).json({ error: 'AI analysis failed. Please try again with a clearer image.' });
-  }
-});
-
-// ==== LEGACY AUTO CALORIES CALCULATOR (WEBHOOK) ====
-app.post('/caloriescalculator', upload.single('image'), async (req, res) => {
-  try {
-    const image = req.file;
-    if (!image) return res.status(400).json({ error: 'Image is required' });
-
-    const resizedPath = `uploads/resized-${image.filename}`;
-
-    // 1. تصغير الصورة وضغطها أولاً
-    await sharp(image.path)
-      .resize({ width: 600 }) // تصغير العرض لـ 600 بكسل كافي جداً للذكاء الاصطناعي
-      .jpeg({ quality: 70 })  // تقليل الجودة لـ 70% لتقليل المساحة
-      .toFile(resizedPath);
-
-    // 2. تحويل الصورة "المصغرة" لـ Base64 وليس الأصلية 🎯
-    const base64Image = fs.readFileSync(resizedPath).toString('base64');
-
-    // 3. حذف الملفات المؤقتة فوراً من الهارد
-    fs.unlinkSync(image.path);
-    fs.unlinkSync(resizedPath);
-
-    const webhookURL = 'https://cloud.activepieces.com/api/v1/webhooks/fzmHgVLa2xTaK6l1HRFzT';
-    
-    // 4. إرسال الطلب بحجم خفيف وسريع
-    const response = await fetch(webhookURL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name:        req.body.name,
-        email:       req.body.email,
-        imageBase64: base64Image,
-        mimeType:    'image/jpeg',
-      }),
-    });
-
-    if (!response.ok) return res.status(500).json({ error: 'Automation failed' });
-
-    if (req.body.email) {
-      await Notification.create({
-        email:   req.body.email,
-        message: 'Your meal photo was analysed and sent successfully! 📸',
+    if (!user) {
+      return res.status(401).json({ 
+        error: 'Unauthorized: User not found.',
+        message: 'المستخدم غير موجود'
       });
     }
 
-    res.status(200).json({ message: 'Image sent to automation successfully!' });
-  } catch (err) {
-    console.error('Image processing error:', err);
-    res.status(500).json({ error: 'Image processing failed' });
-  }
-});
-// ==== FOOD DATABASE SYSTEM ====
-app.post('/api/food/create', async (req, res) => {
-  const { name, calories, protein, email } = req.body;
-  if (!name || calories === undefined || protein === undefined) {
-    return res.status(400).json({ error: 'Name, calories, and protein are required' });
-  }
-  try {
-    const existing = await FoodItem.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
-    if (existing) return res.status(400).json({ error: 'Food item already exists' });
+    // ترقية تلقائية للإيميلات المسموح بها
+    if (ADMIN_EMAILS.includes(user.email) && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+      console.log(`✅ Promoted to admin: ${user.email}`);
+    }
 
-    const newFood = await FoodItem.create({ name, calories, protein, createdBy: email ?? 'system' });
-    res.json({ message: 'Food item created successfully', food: newFood });
-  } catch (err) {
-    console.error('Food create error:', err);
-    res.status(500).json({ error: 'Failed to create food item' });
-  }
-});
+    // تنزيل الأدمنز الغير مصرح لهم
+    if (user.role === 'admin' && !ADMIN_EMAILS.includes(user.email)) {
+      user.role = 'user';
+      await user.save();
+      console.log(`❌ Demoted unauthorized admin: ${user.email}`);
+    }
 
-app.post('/api/food/calculate', async (req, res) => {
-  const { foodName, weight } = req.body;
-  if (!foodName) return res.status(400).json({ error: 'Food name is required' });
-
-  const lowerName  = foodName.toLowerCase().trim();
-  const multiplier = weight ? parseFloat(weight) / 100 : 1;
-
-  try {
-    const dbFood = await FoodItem.findOne({ name: { $regex: new RegExp(lowerName, 'i') } });
-    if (dbFood) {
-      return res.json({
-        foodName: dbFood.name,
-        calories: Math.round(dbFood.calories * multiplier),
-        protein:  Math.round(dbFood.protein  * multiplier),
-        per100g:  { calories: dbFood.calories, protein: dbFood.protein },
-        weight:   weight ?? 100,
-        found:    true,
-        source:   'database',
+    // التحقق النهائي
+    if (user.role !== 'admin' || !ADMIN_EMAILS.includes(user.email)) {
+      return res.status(403).json({ 
+        error: 'Forbidden: Access denied.',
+        message: 'هذا الحساب غير مصرح له بالدخول إلى لوحة التحكم'
       });
     }
 
-    const match = Object.keys(foodDatabase).find(key => lowerName.includes(key));
-    if (match) {
-      const data = foodDatabase[match];
-      return res.json({
-        foodName: match,
-        calories: Math.round(data.calories * multiplier),
-        protein:  Math.round(data.protein  * multiplier),
-        per100g:  { calories: data.calories, protein: data.protein },
-        weight:   weight ?? 100,
-        found:    true,
-        source:   'mock',
-      });
+    req.user = user;
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired', message: 'انتهت الجلسة' });
     }
-
-    return res.json({
-      foodName, weight: weight ?? 100, found: false,
-      calories: Math.round(100 * multiplier),
-      protein:  Math.round(5   * multiplier),
-      message:  'Food not found — using default estimation.',
-    });
-  } catch (err) {
-    console.error('Food calculate error:', err);
-    res.status(500).json({ error: 'Calculation failed' });
+    return res.status(401).json({ error: 'Unauthorized', message: 'خطأ في التحقق' });
   }
-});
+}
 
-// ==== DAILY INTAKE ====
-app.post('/api/daily-intake/add', async (req, res) => {
-  const { email, foodName, calories, protein } = req.body;
-  if (!email || !foodName || calories === undefined) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-  try {
-    const today    = new Date().toISOString().split('T')[0];
-    const newEntry = await DailyIntake.create({ email, date: today, foodName, calories, protein: protein ?? 0 });
+// ==========================================
+//           AUTH ROUTES
+// ==========================================
 
-    await Notification.create({
-      email,
-      message: `New meal logged: ${foodName} (+${calories} kcal) 🍽️`,
-    });
-
-    res.json({ message: 'Meal added to daily intake', entry: newEntry });
-  } catch (err) {
-    console.error('Daily intake error:', err);
-    res.status(500).json({ error: 'Failed to save data' });
-  }
-});
-
-app.get('/api/daily-intake/today', async (req, res) => {
-  const { email } = req.query;
-  if (!email) return res.status(400).json({ error: 'Email is required' });
-  try {
-    const today   = new Date().toISOString().split('T')[0];
-    const entries = await DailyIntake.find({ email, date: today });
-    res.json({
-      date:           today,
-      totalCalories:  entries.reduce((sum, e) => sum + e.calories, 0),
-      totalProtein:   entries.reduce((sum, e) => sum + e.protein,  0),
-      entries,
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch data' });
-  }
-});
-
-app.get('/api/daily-intake/weekly', async (req, res) => {
-  const { email } = req.query;
-  if (!email) return res.status(400).json({ error: 'Email is required' });
-  try {
-    const today    = new Date();
-    const last7    = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() - (6 - i));
-      return d.toISOString().split('T')[0];
-    });
-    const entries  = await DailyIntake.find({ email, date: { $in: last7 } });
-    const weeklyData = last7.map(date => ({
-      date,
-      calories: entries.filter(e => e.date === date).reduce((sum, e) => sum + e.calories, 0),
-    }));
-    res.json({ weeklyData });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch weekly data' });
-  }
-});
-
-// ==== WORKOUT REGISTRATION ====
-app.post('/register', async (req, res) => {
-  const { name, email, age, gender, goal, level, daysPerWeek, sessionMinutes, equipment, notes } = req.body;
-  if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
-  try {
-    const webhookURL = 'https://cloud.activepieces.com/api/v1/webhooks/SdYPrCVeXToOiEwQJdtyG';
-    const response   = await fetch(webhookURL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name, email, age, gender, goal, level, daysPerWeek, sessionMinutes, equipment, notes }),
-    });
-    if (!response.ok) return res.status(500).json({ error: 'Webhook failed' });
-
-    await Notification.create({
-      email,
-      message: `Welcome, ${name}! Your workout plan registration was successful. Your personalised plan is being prepared 🏋️`,
-    });
-
-    res.status(200).json({ message: 'User registered and data sent successfully!' });
-  } catch (err) {
-    console.error('Register error:', err);
-    res.status(500).json({ error: 'Something went wrong' });
-  }
-});
-
-// ==== HEALTH TRACKERS ====
-app.post('/save/bmi', async (req, res) => {
-  const { email, height, weight, bmi } = req.body;
-  if (!height || !weight || !bmi) return res.status(400).json({ error: 'All fields are required' });
-  try {
-    const newBmi = await Bmi.create({ email, height, weight, bmi });
-
-    await Notification.create({
-      email,
-      message: `Your BMI was calculated successfully! Current BMI: ${bmi} ⚖️`,
-    });
-
-    res.status(200).json({ message: 'BMI saved successfully', Data: newBmi });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save BMI data' });
-  }
-});
-
-app.get('/bmi', async (req, res) => {
-  try {
-    res.status(200).json(await Bmi.find({}));
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch BMI data' });
-  }
-});
-
-app.get('/workout', async (req, res) => {
-  try {
-    res.status(200).json(await Workout.find({}));
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch workout data' });
-  }
-});
-
-app.post('/save/calories', async (req, res) => {
-  const { email, calories } = req.body;
-  if (!calories) return res.status(400).json({ error: 'Calories value is required' });
-  try {
-    const newCalories = await Calories.create({ email, calories });
-
-    await Notification.create({
-      email,
-      message: `Your daily calorie goal has been updated to ${calories} kcal 🎯`,
-    });
-
-    res.status(200).json({ message: 'Calories saved successfully', Data: newCalories });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save calories data' });
-  }
-});
-
-app.get('/calories', async (req, res) => {
-  try {
-    res.status(200).json(await Calories.find({}));
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch calories data' });
-  }
-});
-
-// ==== AUTHENTICATION ====
+// تسجيل مستخدم جديد
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ error: 'All fields are required' });
+  
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+  
   try {
-    const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ error: 'Email already exists' });
+    const cleanEmail = email.toLowerCase().trim();
+    const existing = await User.findOne({ email: cleanEmail });
+    
+    if (existing) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
 
     const salt = crypto.randomBytes(16).toString('hex');
     const hashedPassword = hashPassword(password, salt);
 
+    // ✅ تحديد الدور بناءً على القائمة
+    const role = ADMIN_EMAILS.includes(cleanEmail) ? "admin" : "user";
+
     const newUser = await User.create({
       name,
-      email,
+      email: cleanEmail,
       password: hashedPassword,
       salt,
       provider: "credentials",
+      role: role,
     });
 
     await Notification.create({
-      email,
-      message: `Welcome ${name}! 🎉 Your account was created successfully.`,
+      email: cleanEmail,
+      message: `Welcome ${name}! 🎉`,
     });
 
     return res.status(201).json({
       message: 'Account created successfully',
-      user: { id: newUser._id, name: newUser.name, email: newUser.email },
+      user: { 
+        id: newUser._id.toString(), 
+        name: newUser.name, 
+        email: newUser.email,
+        role: newUser.role
+      },
     });
   } catch (err) {
+    console.error('Registration error:', err);
     return res.status(500).json({ error: 'Registration failed' });
   }
 });
 
+// تسجيل الدخول
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+  
   try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    
+    if (!user || !user.password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
     const hashedPassword = hashPassword(password, user.salt);
-    if (hashedPassword !== user.password) return res.status(401).json({ error: 'Invalid credentials' });
+    if (hashedPassword !== user.password) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // ✅ تصحيح الدور حسب القائمة
+    if (ADMIN_EMAILS.includes(user.email) && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+      console.log(`✅ Promoted: ${user.email}`);
+    } else if (!ADMIN_EMAILS.includes(user.email) && user.role === 'admin') {
+      user.role = 'user';
+      await user.save();
+      console.log(`❌ Demoted: ${user.email}`);
+    }
 
     await LoginLog.create({
       userId: user._id,
@@ -594,65 +334,345 @@ app.post('/api/auth/login', async (req, res) => {
       status: "success",
     });
 
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      BACKEND_JWT_SECRET,
+      { expiresIn: '2d' }
+    );
+
+    res.cookie('admin_session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 2 * 24 * 60 * 60 * 1000,
+      sameSite: 'lax'
+    });
+
     return res.json({
-      message: 'Login successful',
-      user: { id: user._id, name: user.name, email: user.email },
+      message: 'Login successful!',
+      token: token,
+      user: { 
+        id: user._id.toString(),
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        image: user.image
+      },
     });
   } catch (err) {
+    console.error('Login error:', err);
     return res.status(500).json({ error: 'Login failed' });
   }
 });
 
+// OAuth
+// OAuth تسجيل الدخول عن طريق
 app.post("/api/auth/oauth", async (req, res) => {
   const { name, email, image, provider } = req.body;
-  if (!email) return res.status(400).json({ error: "Email required" });
+  
+  if (!email) {
+    return res.status(400).json({ error: "Email required" });
+  }
+  
   try {
-    let user = await User.findOne({ email });
+    const cleanEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: cleanEmail });
+    
     if (!user) {
-      user = await User.create({ name, email, image, provider });
-    }
+      // ✅ مستخدم جديد: إذا كان الإيميل في قائمة الأدمنز → admin
+      const role = ADMIN_EMAILS.includes(cleanEmail) ? "admin" : "user";
+      
+     user = await User.create({ 
+  name, 
+  email: cleanEmail, 
+  image, 
+  provider, 
+  role: role  // "admin" أو "user"
+}); 
+console.log(`✅ New OAuth user: ${user._id} (${role})`);
+    } else {
+      // ✅ مستخدم موجود: نصحح الدور إذا كان غلط
+      if (ADMIN_EMAILS.includes(cleanEmail) && user.role !== 'admin') {
+        user.role = 'admin';
+        await user.save();
+        console.log(`✅ Promoted to admin: ${cleanEmail}`);
+      } else if (!ADMIN_EMAILS.includes(cleanEmail) && user.role === 'admin') {
+        user.role = 'user';
+        await user.save();
+        console.log(`❌ Demoted unauthorized admin: ${cleanEmail}`);
+      } else {
+        console.log(`✅ Existing user role unchanged: ${cleanEmail} (${user.role})`);
+      }
+    } 
 
     await LoginLog.create({
       userId: user._id,
-      email,
+      email: cleanEmail,
       provider,
       status: "success",
     });
 
     return res.json({
-      user: { id: user._id, name: user.name, email: user.email, image: user.image },
+      user: { 
+        id: user._id.toString(),
+        name: user.name, 
+        email: user.email, 
+        image: user.image, 
+        role: user.role 
+      },
     });
   } catch (err) {
+    console.error("OAuth error:", err);
     return res.status(500).json({ error: "OAuth failed" });
   }
 });
 
-// GET BIO
-app.get("/api/user/bio", async (req, res) => {
+// تسجيل الخروج
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('admin_session');
+  return res.json({ message: 'Logged out!' });
+});
+
+// ==========================================
+//         ADMIN DASHBOARD ROUTES
+// ==========================================
+
+// إحصائيات
+app.get('/api/admin/stats', isAdmin, async (req, res) => {
   try {
-    const { email } = req.query;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: "User not found" });
-    res.json({ bio: user.bio || "" });
+    const totalUsers = await User.countDocuments({ role: 'user' });
+    const totalScans = await AIScanLog.countDocuments({});
+    const totalBMIs = await Bmi.countDocuments({});
+    const totalLogins = await LoginLog.countDocuments({ status: 'success' });
+
+    res.json({ success: true, data: { totalUsers, totalScans, totalBMIs, totalLogins } });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch bio" });
+    res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
 
-// SAVE BIO
-app.post("/api/user/bio", async (req, res) => {
+// رسم بياني
+app.get('/api/admin/charts/activity', isAdmin, async (req, res) => {
   try {
-    const { email, bio } = req.body;
-    await User.updateOne({ email }, { $set: { bio } });
-    res.json({ success: true });
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const activityData = await LoginLog.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo }, status: 'success' } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    const formattedData = activityData.map(item => ({ date: item._id, logins: item.count }));
+    res.json({ success: true, data: formattedData });
   } catch (err) {
-    res.status(500).json({ error: "Failed to save bio" });
+    res.status(500).json({ error: 'Failed to fetch chart data' });
   }
 });
 
+// قائمة المستخدمين
+app.get('/api/admin/users', isAdmin, async (req, res) => {
+  try {
+    const users = await User.find({}, { password: 0, salt: 0 }).sort({ createdAt: -1 });
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// ترقية أدمن
+app.post('/api/admin/promote', isAdmin, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  
+  try {
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role === 'admin') return res.status(400).json({ error: 'Already admin' });
+    
+    user.role = 'admin';
+    await user.save();
+    
+    res.json({ success: true, message: `${user.email} is now admin` });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to promote' });
+  }
+});
+
+// تنزيل أدمن
+app.post('/api/admin/demote', isAdmin, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  
+  if (SUPER_ADMINS.includes(email.toLowerCase().trim())) {
+    return res.status(403).json({ error: 'Cannot demote super admin' });
+  }
+  
+  try {
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    user.role = 'user';
+    await user.save();
+    
+    res.json({ success: true, message: `${user.email} is no longer admin` });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to demote' });
+  }
+});
+
+// ==========================================
+//           FOOD SCANNER
+// ==========================================
+
+app.post('/api/food/scan', upload.single('image'), async (req, res) => {
+  try {
+    const image = req.file;
+    const { email } = req.body;
+
+    if (!image) return res.status(400).json({ error: 'Please upload an image' });
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const resizedPath = path.join('uploads', `resized-${image.filename}`);
+    await sharp(image.path).resize({ width: 640 }).jpeg({ quality: 75 }).toFile(resizedPath);
+
+    const base64Image = fs.readFileSync(resizedPath).toString('base64');
+
+    if (fs.existsSync(image.path)) fs.unlinkSync(image.path);
+    if (fs.existsSync(resizedPath)) fs.unlinkSync(resizedPath);
+
+    const aiPrompt = `Analyze this food image. Return ONLY a JSON object with keys: "foodName", "calories", "protein". No markdown.`;
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: aiPrompt }, { inlineData: { mimeType: "image/jpeg", data: base64Image } }] }]
+        })
+      }
+    );
+
+    const geminiData = await geminiRes.json();
+    let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(rawText);
+
+    await AIScanLog.create({ 
+      email: email.toLowerCase(),
+      imageUrl: resizedPath,
+      predictedFood: result.foodName || "Unknown",
+      estimatedCalories: Number(result.calories) || 0,
+      estimatedProtein: Number(result.protein) || 0
+    });
+
+    await Notification.create({
+      email: email.toLowerCase(),
+      message: `AI Scan: ${result.foodName || 'Meal'} 📸`
+    });
+
+    return res.json({ success: true, result });
+  } catch (err) {
+    console.error('Scanner error:', err);
+    return res.status(500).json({ error: 'AI analysis failed' });
+  }
+});
+
+// ==========================================
+//           OTHER ROUTES (موجودة)
+// ==========================================
+
+// Food Database
+app.post('/api/food/create', async (req, res) => { /* ... */ });
+app.post('/api/food/calculate', async (req, res) => { /* ... */ });
+
+// Daily Intake
+app.post('/api/daily-intake/add', async (req, res) => { /* ... */ });
+app.get('/api/daily-intake/today', async (req, res) => { /* ... */ });
+app.get('/api/daily-intake/weekly', async (req, res) => { /* ... */ });
+
+// Health Trackers
+app.post('/save/bmi', async (req, res) => { /* ... */ });
+app.post('/save/calories', async (req, res) => { /* ... */ });
+
+// Notifications
+app.get('/api/notifications', async (req, res) => { /* ... */ });
+app.put('/api/notifications/mark-read', async (req, res) => { /* ... */ });
+
+// User Bio
+app.get("/api/user/bio", async (req, res) => { /* ... */ });
+app.post("/api/user/bio", async (req, res) => { /* ... */ });
+
+// Gemini Chat
+app.post('/chat', async (req, res) => { /* ... */ });
+
+// Health Check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' });
+});
+
+// Home
 app.get('/', (req, res) => {
-  res.send("Healthy Life API Server is running smoothly! 🚀");
+  res.json({ message: "Healthy Life API 🚀", version: "2.0.0" });
+});
+// راوت مؤقت لتثبيت الأدمن (شغله مرة واحدة وبعدين احذفه)
+app.get('/api/fix-admin', async (req, res) => {
+  try {
+    const result = await User.updateOne(
+      { email: "aethefifthofjuly@gmail.com" },
+      { $set: { role: "admin" } }
+    );
+    res.json({ success: true, result });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
+// في server.js، قبل app.listen
+app.get('/api/auth/me', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'No token' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, BACKEND_JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // ✅ تأكد من تصحيح الدور
+    if (ADMIN_EMAILS.includes(user.email) && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+    }
+    
+    res.json({
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+app.get('/api/debug/users', async (req, res) => {
+  const users = await User.find({}, { password: 0, salt: 0 });
+  res.json(users);
+});
+// ==========================================
+//           START SERVER
+// ==========================================
+
+app.listen(PORT, () => {
+  console.log(`\n🚀 Server: http://localhost:${PORT}`);
+  console.log(`🔑 Admin emails: ${ADMIN_EMAILS.join(', ')}\n`);
 });
 
-// ==== START ====
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+module.exports = app;
