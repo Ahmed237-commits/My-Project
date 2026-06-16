@@ -138,7 +138,7 @@ export default function Header({ title, description }: { title: string; descript
     return () => { document.body.style.overflow = ""; };
   }, [showMobile]);
 
-  const HIDE_HEADER_ROUTES = ["/signIn", "/signUp", "/dashBoard", "/terms", "/privacy" , '/notifications', '/settings' , '/profile'];
+  const HIDE_HEADER_ROUTES = ["/signIn", "/signUp", "/dashBoard", "/terms", "/privacy" , '/notifications', '/settings' , '/profile' , '/admin/dashboard'];
   if (HIDE_HEADER_ROUTES.includes(pathname)) return null;
 
   const visibleLinks = links
